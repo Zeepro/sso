@@ -15,18 +15,22 @@ Public Class ZSSOUtilities
         Dim QueryString = "SELECT * " & _
             "FROM Account " & _
             "WHERE Email=@email"
+        'TODO: TOP 1
 
         Using oSqlCmdSelect As New SqlCommand(QueryString, oConnexion)
             oSqlCmdSelect.Parameters.AddWithValue("@email", Email)
 
             Try
                 Using md5Hash As MD5 = MD5.Create()
+                    'TODO: MD5 -> BCrypt (http://bcrypt.codeplex.com/)
 
                     Dim QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                    'TODO: Using
                     Dim AccountSalt = ""
                     Dim AccountHash = ""
 
                     While QueryResult.Read()
+                        'TODO: If QueryResult.Read()...
                         AccountSalt = QueryResult(QueryResult.GetOrdinal("Salt"))
                         AccountHash = QueryResult(QueryResult.GetOrdinal("Password"))
                     End While
@@ -47,8 +51,10 @@ Public Class ZSSOUtilities
 
     Public Shared Function WriteLog(Text As String)
         Using oConnexion As New SqlConnection("Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\ZPFr1\Desktop\zsso\ZSSO\trunk\App_Data\Database1.mdf;Integrated Security=True;MultipleActiveResultSets=True")
+            'TODO: ConnexionString -> web.config / machine.config
             oConnexion.Open()
             Dim QueryString As String = "INSERT INTO Logs VALUES (DEFAULT, @text)"
+            'TODO: DEFAULT n'est pas nécessaire
 
             Using oSqlCmdInsert As New SqlCommand(QueryString, oConnexion)
                 Try
