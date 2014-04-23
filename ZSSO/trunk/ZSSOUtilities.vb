@@ -15,7 +15,7 @@ Public Class ZSSOUtilities
         Dim QueryString = "SELECT * " & _
             "FROM Account " & _
             "WHERE Email=@email"
-        'TODO: TOP 1
+        'TODO: TOP 1 *)
 
         Using oSqlCmdSelect As New SqlCommand(QueryString, oConnexion)
             oSqlCmdSelect.Parameters.AddWithValue("@email", Email)
@@ -70,6 +70,7 @@ Public Class ZSSOUtilities
 
     Public Shared Function CheckRequests(Ip As String)
         Dim cacheMemory As ObjectCache = MemoryCache.Default
+        'TODO: Il vaut mieux directement utiliser HttpRuntime.Cache (http://msdn.microsoft.com/en-us/library/system.web.httpruntime.cache.aspx)
         Dim cachedCounterByIp As Int32
 
         Dim cachedRequests = TryCast(cacheMemory("requests"), Dictionary(Of String, Integer))
@@ -85,13 +86,16 @@ Public Class ZSSOUtilities
         cachedCounterByIp = cachedCounterByIp + 1
         cachedRequests(Ip) = cachedCounterByIp
         cacheMemory.Set("requests", cachedRequests, DateTime.Now.AddSeconds(5.0), Nothing)
+        'TODO: Chaque IP doit avoir son sablier -> HttpRuntime.Cache.Insert("request" + Ip, cachedCounterByIp, Nothing, DateTime.Now.AddSeconds(5.0), TimeSpan.Zero)
         Return cachedCounterByIp
     End Function
 
     Public Shared Function GetLocation(Ip As String) As Dictionary(Of String, String)
         Try
             Dim rssReq As WebRequest = WebRequest.Create("https://freegeoip.net/json/" + Ip)
+            'TODO: Using rssReq AS New...
             Dim respStream As Stream = rssReq.GetResponse().GetResponseStream()
+            'TODO: Using respStream AS New...
             Dim response As String = New StreamReader(respStream).ReadToEnd()
             Dim LocationData As Dictionary(Of String, String)
 
