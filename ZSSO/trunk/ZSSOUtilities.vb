@@ -21,26 +21,44 @@ Public Class ZSSOUtilities
         Using oSqlCmdSelect As New SqlCommand(QueryString, oConnexion)
             oSqlCmdSelect.Parameters.AddWithValue("@email", Email)
 
+            'Try
+            '    Using QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+            '        Dim AccountHash = ""
+
+            '        If QueryResult.Read() Then
+            '            AccountHash = QueryResult(QueryResult.GetOrdinal("Password"))
+            '        End If
+
+            '        If Not BCrypt.Net.BCrypt.Verify(Password, AccountHash) Then
+            '            Return False
+            '        End If
+            '    End Using
+            'Catch ex As Exception
+            '    Return False
+            'End Try
+
+            'TODO: Essaie de limiter les " chemins " :
+
             Try
                 Using QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
                     Dim AccountHash = ""
 
                     If QueryResult.Read() Then
                         AccountHash = QueryResult(QueryResult.GetOrdinal("Password"))
-                    End If
-
-                    If Not BCrypt.Net.BCrypt.Verify(Password, AccountHash) Then
-                        Return False
+                        If BCrypt.Net.BCrypt.Verify(Password, AccountHash) Then
+                            Return True
+                        End If
                     End If
                 End Using
-            Catch ex As Exception
-                Return False
+            Catch
             End Try
+
         End Using
-        Return True
+        Return False
     End Function
 
     Public Shared Function getConnectionString() As String
+        'TODO: Juste ceci dans les fonctions appelantes : System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString
         Dim rootWebConfig As System.Configuration.Configuration
         rootWebConfig = System.Web.Configuration.WebConfigurationManager.OpenWebConfiguration("/Web")
         Dim connString As System.Configuration.ConnectionStringSettings = Nothing
@@ -75,8 +93,11 @@ Public Class ZSSOUtilities
         Dim cachedCounterByIp As Int32
 
         Try
-            cachedCounterByIp = CInt(HttpCache("request_" + Type + "_" + Ip))
+            'cachedCounterByIp = CInt(HttpCache("request_" + Type + "_" + Ip))
+            'TODO: Cela devrait marcher (et c'est plus simple)
+            cachedCounterByIp = CInt(HttpRuntime.Cache(("request_" + Type + "_" + Ip))
         Catch
+            'TODO: Si l'élément n'existe pas cela devrait renvoyer Nothing -> pas d'erreur ; à tester
             cachedCounterByIp = 0
         End Try
 
