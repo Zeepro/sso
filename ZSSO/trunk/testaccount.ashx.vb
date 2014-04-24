@@ -14,7 +14,7 @@ Public Class testaccount
         Dim returnValue = New Dictionary(Of String, String)
         Dim cacheMemory As ObjectCache = MemoryCache.Default
 
-        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress) > 5 Then
+        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress, "testaccount") > 5 Then
             context.Response.ContentType = "text/plain"
             context.Response.StatusCode = 435
             context.Response.Write("Too many requests")
@@ -59,10 +59,10 @@ Public Class testaccount
     End Sub
 
     Public Shared Function SearchEmail(Email As String)
-        Using oConnexion As New SqlConnection("Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\ZPFr1\Desktop\zsso\ZSSO\trunk\App_Data\Database1.mdf;Integrated Security=True")
+        Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
             oConnexion.Open()
 
-            Dim QueryString = "SELECT Email " & _
+            Dim QueryString = "SELECT TOP 1 Email " & _
                 "FROM Account " & _
                 "WHERE Email=@email"
 
@@ -71,11 +71,12 @@ Public Class testaccount
                 oSqlCmd.Parameters.AddWithValue("@email", Email)
 
                 Try
-                    Dim QueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
+                    Using QueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
 
-                    If QueryResult.HasRows Then
-                        Return True
-                    End If
+                        If QueryResult.HasRows Then
+                            Return True
+                        End If
+                    End Using
                 Catch ex As Exception
                     'context.Response.Write("Error : " + "Select commande " + ex.Message)
                     Return False

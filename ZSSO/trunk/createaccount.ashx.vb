@@ -5,6 +5,7 @@ Imports System.Data.SqlClient
 Imports System.Security.Cryptography
 Imports System.Runtime.Caching
 Imports System.IO
+Imports BCrypt.Net.BCrypt
 
 Public Class createaccount
     Implements System.Web.IHttpHandler
@@ -14,7 +15,7 @@ Public Class createaccount
         Dim Password As String
         Dim cacheMemory As ObjectCache = MemoryCache.Default
 
-        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress) > 5 Then
+        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress, "createaccount") > 5 Then
             context.Response.ContentType = "text/plain"
             context.Response.StatusCode = 435
             context.Response.Write("Too many requests")
@@ -45,23 +46,19 @@ Public Class createaccount
                     Return
                 End If
 
-                Using oConnexion As New SqlConnection("Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\ZPFr1\Desktop\zsso\ZSSO\trunk\App_Data\Database1.mdf;Integrated Security=True")
+                Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
                     oConnexion.Open()
 
                     Using oSqlCmd As New SqlCommand( _
-                        "INSERT Account (Email, Password, Salt) " & _
-                        "VALUES (@email, @password, @salt)", _
+                        "INSERT Account (Email, Password) " & _
+                        "VALUES (@email, @password)", _
                         oConnexion)
 
-                        Using md5Hash As MD5 = MD5.Create()
+                        Dim Salt = BCrypt.Net.BCrypt.GenerateSalt()
+                        Dim PasswordHash As String = BCrypt.Net.BCrypt.HashPassword(Password, Salt)
 
-                            Dim Salt As String = System.Web.Security.Membership.GeneratePassword(5, 0)
-                            Dim hash As String = ZSSOUtilities.GetMd5Hash(md5Hash, Password + Salt)
-
-                            oSqlCmd.Parameters.AddWithValue("email", Email)
-                            oSqlCmd.Parameters.AddWithValue("password", hash)
-                            oSqlCmd.Parameters.AddWithValue("salt", Salt)
-                        End Using
+                        oSqlCmd.Parameters.AddWithValue("email", Email)
+                        oSqlCmd.Parameters.AddWithValue("password", PasswordHash)
 
                         Try
                             oSqlCmd.ExecuteNonQuery()

@@ -12,9 +12,9 @@ Public Class listprinter
     Sub ProcessRequest(ByVal context As HttpContext) Implements IHttpHandler.ProcessRequest
         Dim Email As String
         Dim Password As String
-        Dim cacheMemory As ObjectCache = MemoryCache.Default
+        Dim HttpMemory As Caching.Cache = HttpRuntime.Cache
 
-        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress) > 5 Then
+        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress, "listprinter") > 5 Then
             context.Response.ContentType = "text/plain"
             context.Response.StatusCode = 435
             context.Response.Write("Too many requests")
@@ -45,7 +45,7 @@ Public Class listprinter
                     Return
                 End If
 
-                Using oConnexion As New SqlConnection("Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\ZPFr1\Desktop\zsso\ZSSO\trunk\App_Data\Database1.mdf;Integrated Security=True;MultipleActiveResultSets=True")
+                Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
                     oConnexion.Open()
 
                     If Not ZSSOUtilities.Login(oConnexion, Email, Password) Then
@@ -63,26 +63,23 @@ Public Class listprinter
                     Using oSqlCmdSelect As New SqlCommand(QueryString, oConnexion)
                         oSqlCmdSelect.Parameters.AddWithValue("@email", Email)
 
-                        Dim cachedPrinters = TryCast(cacheMemory("printers"), Dictionary(Of String, Dictionary(Of String, String)))
-                        If IsNothing(cachedPrinters) Then
-                            cachedPrinters = New Dictionary(Of String, Dictionary(Of String, String))
-                        End If
-                        Dim QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
                         Dim AccountPrinters = New Dictionary(Of String, Dictionary(Of String, String))
+                        Using QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
 
-                        While QueryResult.Read()
-                            Dim Serial = QueryResult(QueryResult.GetOrdinal("Serial"))
-                            Dim Name = QueryResult(QueryResult.GetOrdinal("Name"))
+                            While QueryResult.Read()
+                                Dim Serial = QueryResult(QueryResult.GetOrdinal("Serial"))
+                                Dim Name = QueryResult(QueryResult.GetOrdinal("Name"))
 
-                            If cachedPrinters.ContainsKey(Serial) Then
-                                Dim PrinterData = New Dictionary(Of String, String)
-                                PrinterData("printername") = Name
-                                PrinterData("localIP") = cachedPrinters(Serial)("local_ip")
-                                PrinterData("FQDN") = Serial + "." + cachedPrinters(Serial)("server_hostname")
-                                AccountPrinters(Serial) = PrinterData
-                            End If
-                        End While
-
+                                Dim cachedPrinter = TryCast(HttpMemory("printer_" + Serial), Dictionary(Of String, String))
+                                If Not IsNothing(cachedPrinter) Then
+                                    Dim PrinterData = New Dictionary(Of String, String)
+                                    PrinterData("printername") = Name
+                                    PrinterData("localIP") = cachedPrinter("local_ip")
+                                    PrinterData("FQDN") = Serial + "." + cachedPrinter("server_hostname")
+                                    AccountPrinters(Serial) = PrinterData
+                                End If
+                            End While
+                        End Using
                         context.Response.ContentType = "text/plain"
                         context.Response.Write(ZSSOUtilities.oSerializer.Serialize(AccountPrinters.Values))
                         ZSSOUtilities.WriteLog("ListPrinter : OK : " + ZSSOUtilities.oSerializer.Serialize(AccountPrinters))

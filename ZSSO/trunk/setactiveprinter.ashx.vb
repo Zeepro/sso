@@ -15,22 +15,15 @@ Public Class setactiveprinter
         Dim Ip As String = ""
         Dim Token As String = ""
         Dim SerialFound As Boolean = False
-        Dim cacheMemory As ObjectCache = MemoryCache.Default
+        Dim HttpMemory As Caching.Cache = HttpRuntime.Cache
 
         If context.Request.HttpMethod = "GET" Then
             context.Response.ContentType = "text/html"
             context.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setactiveprinter.ashx"" accept-charset=""utf-8"">Serial <input id=""serial"" name=""serial"" type=""text"" /><br />Local IP <input id=""ip"" name=""ip"" type=""text"" /><br />Token <input id=""token"" name=""token"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
         Else
-            Dim cachedPrinters = TryCast(cacheMemory("printers"), Dictionary(Of String, Dictionary(Of String, String)))
-            If IsNothing(cachedPrinters) Then
-                cachedPrinters = New Dictionary(Of String, Dictionary(Of String, String))
-            End If
-
             Serial = HttpUtility.UrlDecode(context.Request.Form("serial"))
             Ip = HttpUtility.UrlDecode(context.Request.Form("ip"))
             Token = HttpUtility.UrlDecode(context.Request.Form("token"))
-            Dim SerialData = New Dictionary(Of String, String)
-
             ZSSOUtilities.WriteLog("SetActivePrinter : " + ZSSOUtilities.oSerializer.Serialize(context.Request.Form))
 
             If String.IsNullOrEmpty(Serial) Or String.IsNullOrEmpty(Ip) Or String.IsNullOrEmpty(Token) Then
@@ -48,10 +41,10 @@ Public Class setactiveprinter
                 Return
             End If
 
-            Using oConnexion As New SqlConnection("Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\ZPFr1\Desktop\zsso\ZSSO\trunk\App_Data\Database1.mdf;Integrated Security=True")
+            Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
                 oConnexion.Open()
 
-                Dim QueryString = "SELECT Serial " & _
+                Dim QueryString = "SELECT TOP 1 Serial " & _
                     "FROM Printer " & _
                     "WHERE Serial=@serial"
 
@@ -60,13 +53,13 @@ Public Class setactiveprinter
                     oSqlCmd.Parameters.AddWithValue("@serial", Serial)
 
                     Try
-                        Dim QueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
-
-                        If QueryResult.HasRows Then
-                            SerialFound = True
-                        End If
+                        Using QueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
+                            If QueryResult.HasRows Then
+                                SerialFound = True
+                            End If
+                        End Using
                     Catch ex As Exception
-                        context.Response.Write("Error : " + "Sauvegarde commande " + ex.Message)
+                        'context.Response.Write("Error : " + "Sauvegarde commande " + ex.Message)
                         Return
                     End Try
                 End Using
@@ -74,11 +67,11 @@ Public Class setactiveprinter
             End Using
 
             If SerialFound Then
+                Dim SerialData = New Dictionary(Of String, String)
                 SerialData("local_ip") = Ip
                 SerialData("token") = Token
                 SerialData("server_hostname") = Dns.GetHostEntry(context.Request.UserHostAddress).HostName + ".zeepro.com"
-                cachedPrinters(Serial) = SerialData
-                cacheMemory.Set("printers", cachedPrinters, DateTime.Now.AddMinutes(20.0), Nothing)
+                HttpMemory.Insert("printer_" + Serial, SerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
             Else
                 context.Response.StatusCode = 436
                 context.Response.Write("Unknown printer")

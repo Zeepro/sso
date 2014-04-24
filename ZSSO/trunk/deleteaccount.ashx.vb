@@ -14,7 +14,7 @@ Public Class deleteaccount
         Dim Password As String
         Dim cacheMemory As ObjectCache = MemoryCache.Default
 
-        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress) > 5 Then
+        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress, "deleteaccount") > 5 Then
             context.Response.ContentType = "text/plain"
             context.Response.StatusCode = 435
             context.Response.Write("Too many requests")
@@ -45,7 +45,7 @@ Public Class deleteaccount
                     Return
                 End If
 
-                Using oConnexion As New SqlConnection("Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\ZPFr1\Desktop\zsso\ZSSO\trunk\App_Data\Database1.mdf;Integrated Security=True;MultipleActiveResultSets=True")
+                Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
                     oConnexion.Open()
 
                     If Not ZSSOUtilities.Login(oConnexion, Email, Password) Then
@@ -64,7 +64,7 @@ Public Class deleteaccount
                         Try
                             oSqlCmdDelete.ExecuteNonQuery()
                         Catch ex As Exception
-                            context.Response.Write("Error : " + " commande " + ex.Message)
+                            'context.Response.Write("Error : " + " commande " + ex.Message)
                             Return
                         End Try
 

@@ -16,7 +16,7 @@ Public Class addprinter
         Dim Name As String
         Dim cacheMemory As ObjectCache = MemoryCache.Default
 
-        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress) > 5 Then
+        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress, "addprinter") > 5 Then
             context.Response.ContentType = "text/plain"
             context.Response.StatusCode = 435
             context.Response.Write("Too many requests")
@@ -49,46 +49,18 @@ Public Class addprinter
                     Return
                 End If
 
-                Using oConnexion As New SqlConnection("Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\ZPFr1\Desktop\zsso\ZSSO\trunk\App_Data\Database1.mdf;Integrated Security=True;MultipleActiveResultSets=True")
+                Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
                     oConnexion.Open()
 
-                    Dim QueryString = "SELECT * " & _
-                        "FROM Account " & _
-                        "WHERE Email=@email"
+                    If Not ZSSOUtilities.Login(oConnexion, Email, Password) Then
+                        context.Response.ContentType = "text/plain"
+                        context.Response.StatusCode = 434
+                        context.Response.Write("Login failed")
+                        ZSSOUtilities.WriteLog("ChangePassword : Login failed")
+                        Return
+                    End If
 
-                    Using oSqlCmdSelect As New SqlCommand(QueryString, oConnexion)
-                        oSqlCmdSelect.Parameters.AddWithValue("@email", Email)
-
-                        Try
-                            Using md5Hash As MD5 = MD5.Create()
-
-                                Dim QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
-                                Dim AccountSalt = ""
-                                Dim AccountHash = ""
-
-                                While QueryResult.Read()
-                                    AccountSalt = QueryResult(QueryResult.GetOrdinal("Salt"))
-                                    AccountHash = QueryResult(QueryResult.GetOrdinal("Password"))
-                                End While
-
-                                Dim HashToCheck As String = ZSSOUtilities.GetMd5Hash(md5Hash, Password + AccountSalt)
-
-                                If (AccountSalt.Length > 0 And AccountHash.Length > 0 And (String.Compare(AccountHash, HashToCheck))) Or AccountSalt.Length = 0 Or AccountHash.Length = 0 Then
-                                    context.Response.ContentType = "text/plain"
-                                    context.Response.StatusCode = 434
-                                    context.Response.Write("Login failed")
-                                    ZSSOUtilities.WriteLog("AddPrinter : Login Failed")
-                                    Return
-                                End If
-                            End Using
-
-                        Catch ex As Exception
-                            context.Response.Write("Error : " + "Select commande " + ex.Message)
-                            Return
-                        End Try
-                    End Using
-
-                    QueryString = "UPDATE Printer SET Name = @name, EmailAccount = @email WHERE Serial = @serial " & _
+                    Dim QueryString = "UPDATE Printer SET Name = @name, EmailAccount = @email WHERE Serial = @serial " & _
                         "IF @@ROWCOUNT=0 INSERT INTO Printer VALUES (@serial, @name, @email, DEFAULT, NULL)"
 
                     Using oSqlCmdInsert As New SqlCommand(QueryString, oConnexion)
@@ -99,7 +71,7 @@ Public Class addprinter
                         Try
                             oSqlCmdInsert.ExecuteNonQuery()
                         Catch ex As Exception
-                            context.Response.Write("Error : " + " commande " + ex.Message)
+                            'context.Response.Write("Error : " + " commande " + ex.Message)
                             Return
                         End Try
 

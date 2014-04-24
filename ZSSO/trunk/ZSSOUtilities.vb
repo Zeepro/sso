@@ -6,42 +6,33 @@ Imports System.Web.Script.Serialization
 Imports System.Security.Cryptography
 Imports System.Data.SqlClient
 Imports System.Globalization
+Imports BCrypt.Net.BCrypt
+Imports System.Net.Cache
 
 Public Class ZSSOUtilities
     Public Shared emailExpression As New Regex("^[_a-z0-9-]+(.[a-z0-9-]+)@[a-z0-9-]+(.[a-z0-9-]+)*(.[a-z]{2,4})$")
     Public Shared oSerializer As New JavaScriptSerializer
 
     Public Shared Function Login(oConnexion As SqlConnection, Email As String, Password As String) As Boolean
-        Dim QueryString = "SELECT * " & _
+        Dim QueryString = "SELECT TOP 1 * " & _
             "FROM Account " & _
             "WHERE Email=@email"
-        'TODO: TOP 1 *)
 
         Using oSqlCmdSelect As New SqlCommand(QueryString, oConnexion)
             oSqlCmdSelect.Parameters.AddWithValue("@email", Email)
 
             Try
-                Using md5Hash As MD5 = MD5.Create()
-                    'TODO: MD5 -> BCrypt (http://bcrypt.codeplex.com/)
-
-                    Dim QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
-                    'TODO: Using
-                    Dim AccountSalt = ""
+                Using QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
                     Dim AccountHash = ""
 
-                    While QueryResult.Read()
-                        'TODO: If QueryResult.Read()...
-                        AccountSalt = QueryResult(QueryResult.GetOrdinal("Salt"))
+                    If QueryResult.Read() Then
                         AccountHash = QueryResult(QueryResult.GetOrdinal("Password"))
-                    End While
+                    End If
 
-                    Dim HashToCheck As String = ZSSOUtilities.GetMd5Hash(md5Hash, Password + AccountSalt)
-
-                    If (AccountSalt.Length > 0 And AccountHash.Length > 0 And (String.Compare(AccountHash, HashToCheck))) Or AccountSalt.Length = 0 Or AccountHash.Length = 0 Then
+                    If Not BCrypt.Net.BCrypt.Verify(Password, AccountHash) Then
                         Return False
                     End If
                 End Using
-
             Catch ex As Exception
                 Return False
             End Try
@@ -49,12 +40,23 @@ Public Class ZSSOUtilities
         Return True
     End Function
 
+    Public Shared Function getConnectionString() As String
+        Dim rootWebConfig As System.Configuration.Configuration
+        rootWebConfig = System.Web.Configuration.WebConfigurationManager.OpenWebConfiguration("/Web")
+        Dim connString As System.Configuration.ConnectionStringSettings = Nothing
+        If (rootWebConfig.ConnectionStrings.ConnectionStrings.Count > 0) Then
+            connString = rootWebConfig.ConnectionStrings.ConnectionStrings("ZSSODb")
+        End If
+        If IsNothing(connString) Then
+            Return ""
+        End If
+        Return connString.ToString()
+    End Function
+
     Public Shared Function WriteLog(Text As String)
-        Using oConnexion As New SqlConnection("Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\ZPFr1\Desktop\zsso\ZSSO\trunk\App_Data\Database1.mdf;Integrated Security=True;MultipleActiveResultSets=True")
-            'TODO: ConnexionString -> web.config / machine.config
+        Using oConnexion As New SqlConnection(getConnectionString())
             oConnexion.Open()
             Dim QueryString As String = "INSERT INTO Logs VALUES (DEFAULT, @text)"
-            'TODO: DEFAULT n'est pas nécessaire
 
             Using oSqlCmdInsert As New SqlCommand(QueryString, oConnexion)
                 Try
@@ -68,39 +70,31 @@ Public Class ZSSOUtilities
         Return Nothing
     End Function
 
-    Public Shared Function CheckRequests(Ip As String)
-        Dim cacheMemory As ObjectCache = MemoryCache.Default
-        'TODO: Il vaut mieux directement utiliser HttpRuntime.Cache (http://msdn.microsoft.com/en-us/library/system.web.httpruntime.cache.aspx)
+    Public Shared Function CheckRequests(Ip As String, Type As String)
+        Dim HttpCache As Caching.Cache = HttpRuntime.Cache
         Dim cachedCounterByIp As Int32
 
-        Dim cachedRequests = TryCast(cacheMemory("requests"), Dictionary(Of String, Integer))
-        If IsNothing(cachedRequests) Then
-            cachedRequests = New Dictionary(Of String, Integer)
-        End If
-        If cachedRequests.ContainsKey(Ip) Then
-            cachedCounterByIp = CInt(cachedRequests(Ip))
-            If IsNothing(cachedCounterByIp) Then
-                cachedCounterByIp = 0
-            End If
-        End If
+        Try
+            cachedCounterByIp = CInt(HttpCache("request_" + Type + "_" + Ip))
+        Catch
+            cachedCounterByIp = 0
+        End Try
+
         cachedCounterByIp = cachedCounterByIp + 1
-        cachedRequests(Ip) = cachedCounterByIp
-        cacheMemory.Set("requests", cachedRequests, DateTime.Now.AddSeconds(5.0), Nothing)
-        'TODO: Chaque IP doit avoir son sablier -> HttpRuntime.Cache.Insert("request" + Ip, cachedCounterByIp, Nothing, DateTime.Now.AddSeconds(5.0), TimeSpan.Zero)
+        HttpCache.Insert("request_" + Type + "_" + Ip, cachedCounterByIp, Nothing, DateTime.Now.AddSeconds(5.0), TimeSpan.Zero)
         Return cachedCounterByIp
     End Function
 
     Public Shared Function GetLocation(Ip As String) As Dictionary(Of String, String)
+        Dim LocationData As Dictionary(Of String, String)
         Try
             Dim rssReq As WebRequest = WebRequest.Create("https://freegeoip.net/json/" + Ip)
             'TODO: Using rssReq AS New...
-            Dim respStream As Stream = rssReq.GetResponse().GetResponseStream()
-            'TODO: Using respStream AS New...
-            Dim response As String = New StreamReader(respStream).ReadToEnd()
-            Dim LocationData As Dictionary(Of String, String)
+            Using respStream As Stream = rssReq.GetResponse().GetResponseStream()
+                Dim response As String = New StreamReader(respStream).ReadToEnd()
 
-            LocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(response)
-
+                LocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(response)
+            End Using
             Return LocationData
         Catch ex As Exception
             Return Nothing
@@ -121,7 +115,7 @@ Public Class ZSSOUtilities
         dist = Math.Acos(dist)
         dist = rad2deg(dist)
         dist = dist * 60 * 1.1515 'miles
-        '        dist = dist * 1.609344 'kilometers
+        ' dist = dist * 1.609344 'kilometers
         Return dist
     End Function
 
@@ -132,25 +126,4 @@ Public Class ZSSOUtilities
     Private Shared Function rad2deg(ByVal rad As Double) As Double
         Return rad / Math.PI * 180.0
     End Function
-
-    Public Shared Function GetMd5Hash(ByVal md5Hash As MD5, ByVal input As String) As String
-
-        ' Convert the input string to a byte array and compute the hash.
-        Dim data As Byte() = md5Hash.ComputeHash(Encoding.UTF8.GetBytes(input))
-
-        ' Create a new Stringbuilder to collect the bytes
-        ' and create a string.
-        Dim sBuilder As New StringBuilder()
-
-        ' Loop through each byte of the hashed data 
-        ' and format each one as a hexadecimal string.
-        Dim i As Integer
-        For i = 0 To data.Length - 1
-            sBuilder.Append(data(i).ToString("x2"))
-        Next i
-
-        ' Return the hexadecimal string.
-        Return sBuilder.ToString()
-
-    End Function 'GetMd5Hash
 End Class

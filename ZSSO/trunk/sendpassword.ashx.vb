@@ -7,6 +7,7 @@ Imports System.Runtime.Caching
 Imports System.IO
 Imports System.Security.Cryptography
 Imports System.Net.Mail
+Imports BCrypt.Net.BCrypt
 
 Public Class sendpassword
     Implements System.Web.IHttpHandler
@@ -14,22 +15,15 @@ Public Class sendpassword
     Sub ProcessRequest(ByVal context As HttpContext) Implements IHttpHandler.ProcessRequest
         Dim Email As String
         Dim NewPassword As String
-        Dim NewSalt As String
         Dim cachedCounterByIp As Int32
         Dim EmailFound As Boolean = False
-        Dim cacheMemory As ObjectCache = MemoryCache.Default
+        Dim HttpCache As Caching.Cache = HttpRuntime.Cache
 
-        Dim cachedRequestNewPassword = TryCast(cacheMemory("request_newpassword"), Dictionary(Of String, Integer))
-        If IsNothing(cachedRequestNewPassword) Then
-            cachedRequestNewPassword = New Dictionary(Of String, Integer)
-        End If
-        If cachedRequestNewPassword.ContainsKey(context.Request.UserHostAddress) Then
-            cachedCounterByIp = CInt(cachedRequestNewPassword(context.Request.UserHostAddress))
-            If IsNothing(cachedCounterByIp) Then
-                cachedCounterByIp = 0
-            End If
-        End If
-
+        Try
+            cachedCounterByIp = CInt(HttpCache("request_newpassword_" + context.Request.UserHostAddress))
+        Catch
+            cachedCounterByIp = 0
+        End Try
         If cachedCounterByIp > 3 Then
             context.Response.ContentType = "text/plain"
             context.Response.StatusCode = 435
@@ -38,8 +32,7 @@ Public Class sendpassword
             Return
         Else
             cachedCounterByIp = cachedCounterByIp + 1
-            cachedRequestNewPassword(context.Request.UserHostAddress) = cachedCounterByIp
-            cacheMemory.Set("request_newpassword", cachedRequestNewPassword, DateTime.Now.AddMinutes(10.0), Nothing)
+            HttpCache.Insert("request_newpassword_" + context.Request.UserHostAddress, cachedCounterByIp, Nothing, DateTime.Now.AddMinutes(10.0), TimeSpan.Zero)
             If context.Request.HttpMethod = "GET" Then
                 Email = HttpUtility.UrlDecode(context.Request.QueryString("email"))
                 ZSSOUtilities.WriteLog("SendPassword : " + context.Request.QueryString("email"))
@@ -52,51 +45,53 @@ Public Class sendpassword
                 End If
 
                 NewPassword = System.Web.Security.Membership.GeneratePassword(8, 0)
-                NewSalt = System.Web.Security.Membership.GeneratePassword(5, 0)
+                Dim Salt = BCrypt.Net.BCrypt.GenerateSalt()
+                Dim PasswordHash As String = BCrypt.Net.BCrypt.HashPassword(NewPassword, Salt)
 
-                Using oConnexion As New SqlConnection("Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\ZPFr1\Desktop\zsso\ZSSO\trunk\App_Data\Database1.mdf;Integrated Security=True;MultipleActiveResultSets=True")
+                Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
                     oConnexion.Open()
 
-                    Dim QueryString = "UPDATE Account SET Password = @new_password, Salt = @new_salt WHERE email=@email"
+                    Dim QueryString = "UPDATE Account SET Password = @new_password WHERE email=@email"
 
-                    Using oSqlCmdDelete As New SqlCommand(QueryString, oConnexion)
+                    Using oSqlCmdUpdate As New SqlCommand(QueryString, oConnexion)
 
-                        Using md5Hash As MD5 = MD5.Create()
+                        oSqlCmdUpdate.Parameters.AddWithValue("@email", Email)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@new_password", PasswordHash)
 
-                            oSqlCmdDelete.Parameters.AddWithValue("@email", Email)
-                            oSqlCmdDelete.Parameters.AddWithValue("@new_password", ZSSOUtilities.GetMd5Hash(md5Hash, NewPassword + NewSalt))
-                            oSqlCmdDelete.Parameters.AddWithValue("@new_salt", NewSalt)
-
-                            Try
-                                oSqlCmdDelete.ExecuteNonQuery()
-                            Catch ex As Exception
-                                context.Response.Write("Error : " + " commande " + ex.Message)
+                        Try
+                            If oSqlCmdUpdate.ExecuteNonQuery() < 1 Then
+                                context.Response.ContentType = "text/plain"
+                                context.Response.StatusCode = 434
+                                context.Response.Write("Email not found")
+                                ZSSOUtilities.WriteLog("SendPassword : Email not found")
                                 Return
-                            End Try
-
-                        End Using
+                            End If
+                        Catch ex As Exception
+                            Return
+                        End Try
 
                     End Using
 
-                    QueryString = "SELECT HtmlTemplate FROM EmailTemplate WHERE Name = @template_name"
+                    QueryString = "SELECT TOP 1 HtmlTemplate FROM EmailTemplate WHERE Name = @template_name"
                     Using oSqlSelectTemplace As New SqlCommand(QueryString, oConnexion)
                         oSqlSelectTemplace.Parameters.AddWithValue("@template_name", "sendpassword")
 
-                        Dim QueryResult As SqlDataReader = oSqlSelectTemplace.ExecuteReader()
-                        Dim Template As String = ""
+                        Using QueryResult As SqlDataReader = oSqlSelectTemplace.ExecuteReader()
+                            Dim Template As String = ""
 
-                        While QueryResult.Read()
-                            Template = QueryResult(QueryResult.GetOrdinal("HtmlTemplate"))
-                        End While
+                            If QueryResult.Read() Then
+                                Template = QueryResult(QueryResult.GetOrdinal("HtmlTemplate"))
+                            End If
 
-                        If Template.Length > 0 Then
-                            Dim HtmlTemplate = String.Format(Template, NewPassword)
-                            Dim HtmlEmail As New Mail
-                            HtmlEmail.receiver = Email
-                            HtmlEmail.subject = "Demande de nouveau mot de passe"
-                            HtmlEmail.body = HtmlTemplate
-                            HtmlEmail.send()
-                        End If
+                            If Template.Length > 0 Then
+                                Dim HtmlTemplate = String.Format(Template, NewPassword)
+                                Dim HtmlEmail As New Mail
+                                HtmlEmail.receiver = Email
+                                HtmlEmail.subject = "Demande de nouveau mot de passe"
+                                HtmlEmail.body = HtmlTemplate
+                                HtmlEmail.send()
+                            End If
+                        End Using
                     End Using
                 End Using
             End If
@@ -135,7 +130,7 @@ Public NotInheritable Class Mail
             mail.Body = body
             smtpServer.Send(mail)
         Catch ex As Exception
-            MsgBox(ex.Message & vbNewLine & ex.StackTrace)
+            'MsgBox(ex.Message & vbNewLine & ex.StackTrace)
         End Try
 
     End Sub
