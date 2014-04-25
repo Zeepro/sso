@@ -16,7 +16,7 @@ Public Class ZSSOUtilities
     Public Shared Function Login(oConnexion As SqlConnection, sEmail As String, sPassword As String) As Boolean
         Dim sQuery = "SELECT TOP 1 * " & _
             "FROM Account " & _
-            "WHERE Email=@email AND [Delete] = NULL"
+            "WHERE Email=@email AND [Deleted] = NULL"
 
         Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
             oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail)
@@ -38,7 +38,7 @@ Public Class ZSSOUtilities
     Public Shared Function WriteLog(sText As String)
         Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
             oConnexion.Open()
-            Dim sQuery As String = "INSERT INTO Logs (Text) VALUES (@text)"
+            Dim sQuery As String = "INSERT INTO Logs (LogText) VALUES (@text)"
 
             Using oSqlCmdInsert As New SqlCommand(sQuery, oConnexion)
                 Try

@@ -54,7 +54,7 @@ Public Class deleteaccount
                         Return
                     End If
 
-                    Dim sQuery = "UPDATE Account SET [Delete] = GETDATE() WHERE email=@email"
+                    Dim sQuery = "UPDATE Account SET [Deleted] = GETDATE() WHERE email=@email"
 
                     Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
                         oSqlCmdUpdate.Parameters.AddWithValue("@email", sEmail)

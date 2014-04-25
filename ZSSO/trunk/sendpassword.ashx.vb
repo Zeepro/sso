@@ -50,7 +50,7 @@ Public Class sendpassword
                 Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                     oConnexion.Open()
 
-                    Dim sQuery = "UPDATE Account SET Password = @new_password WHERE email=@email AND [Delete] = NULL"
+                    Dim sQuery = "UPDATE Account SET Password = @new_password WHERE email=@email AND [Deleted] = NULL"
 
                     Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
 

@@ -55,13 +55,13 @@ Public Class listprinter
                         Return
                     End If
 
-                    Dim sQuery = "SELECT [AccountPrinterAssociation].Email, [AccountPrinterAssociation].[Create], [AccountPrinterAssociation].Serial, [Printer].Name " & _
+                    Dim sQuery = "SELECT [AccountPrinterAssociation].Email, [AccountPrinterAssociation].[Created], [AccountPrinterAssociation].Serial, [Printer].Name " & _
                         "FROM [AccountPrinterAssociation] " & _
                         "INNER JOIN " & _
-                        "(SELECT max([Create]) AS LatestDate, Serial " & _
+                        "(SELECT max([Created]) AS LatestDate, Serial " & _
                         "FROM [AccountPrinterAssociation ]" & _
                         "GROUP BY Serial) AS LastAssociation " & _
-                        "ON [AccountPrinterAssociation].[Create] = LastAssociation.LatestDate AND [AccountPrinterAssociation].Serial = LastAssociation.Serial " & _
+                        "ON [AccountPrinterAssociation].[Created] = LastAssociation.LatestDate AND [AccountPrinterAssociation].Serial = LastAssociation.Serial " & _
                         "INNER JOIN Printer ON LastAssociation.Serial = [Printer].Serial " & _
                         "WHERE [AccountPrinterAssociation].Email = @email"
 
