@@ -26,7 +26,7 @@ Public Class testaccount
             Else
                 sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
 
-                ZSSOUtilities.WriteLog("TestAccount : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
+                ZSSOUtilities.WriteLog("TestAccount : " & ZSSOUtilities.oSerializer.Serialize({sEmail}))
 
                 If String.IsNullOrEmpty(sEmail) Then
                     oContext.Response.ContentType = "text/plain"

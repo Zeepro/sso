@@ -31,7 +31,7 @@ Public Class addprinter
                 sSerial = HttpUtility.UrlDecode(oContext.Request.Form("serial"))
                 sName = HttpUtility.UrlDecode(oContext.Request.Form("name"))
 
-                ZSSOUtilities.WriteLog("AddPrinter : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
+                ZSSOUtilities.WriteLog("AddPrinter : " & ZSSOUtilities.oSerializer.Serialize({sEmail, sSerial, sName}))
                 If String.IsNullOrEmpty(sEmail) Or String.IsNullOrEmpty(sPassword) Or String.IsNullOrEmpty(sSerial) Or String.IsNullOrEmpty(sName) Then
                     oContext.Response.StatusCode = 432
                     oContext.Response.Write("Missing parameter")

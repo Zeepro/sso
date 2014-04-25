@@ -16,7 +16,7 @@ Public Class ZSSOUtilities
     Public Shared Function Login(oConnexion As SqlConnection, sEmail As String, sPassword As String) As Boolean
         Dim sQuery = "SELECT TOP 1 * " & _
             "FROM Account " & _
-            "WHERE Email=@email AND [Deleted] = NULL"
+            "WHERE Email=@email AND Deleted IS NULL"
 
         Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
             oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail)

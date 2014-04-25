@@ -30,7 +30,7 @@ Public Class changepassword
                 sOldPassword = HttpUtility.UrlDecode(oContext.Request.Form("old_password"))
                 sNewPassword = HttpUtility.UrlDecode(oContext.Request.Form("new_password"))
 
-                ZSSOUtilities.WriteLog("ChangePassword : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
+                ZSSOUtilities.WriteLog("ChangePassword : " & ZSSOUtilities.oSerializer.Serialize({sEmail}))
                 If String.IsNullOrEmpty(sEmail) Or String.IsNullOrEmpty(sOldPassword) Or String.IsNullOrEmpty(sNewPassword) Then
                     oContext.Response.StatusCode = 432
                     oContext.Response.Write("Missing parameter")

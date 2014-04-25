@@ -17,12 +17,12 @@ Public Class setrendezvousstatus
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setrendezvousstatus.ashx"" accept-charset=""utf-8"">Bandwith <input id=""bandwidth"" name=""bandwidth"" type=""text"" /><br />Percentage <input id=""percentage"" name=""percentage"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setrendezvousstatus.ashx"" accept-charset=""utf-8"">Bandwith <input id=""bandwidth"" name=""bandwidth"" type=""text"" /><br />Percentage <input id=""percentage"" name=""percentage"" type=""text"" /><br />Ip <input id=""ip"" name=""ip"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
         Else
             sBandwidth = HttpUtility.UrlDecode(oContext.Request.Form("bandwidth"))
             sPercentage = HttpUtility.UrlDecode(oContext.Request.Form("percentage"))
 
-            ZSSOUtilities.WriteLog("SetRDVStatus : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
+            ZSSOUtilities.WriteLog("SetRDVStatus : " & ZSSOUtilities.oSerializer.Serialize({sBandwidth, sPercentage}))
 
             If String.IsNullOrEmpty(sBandwidth) Or String.IsNullOrEmpty(sPercentage) Then
                 oContext.Response.StatusCode = 432
@@ -31,14 +31,17 @@ Public Class setrendezvousstatus
                 Return
             End If
 
-            Dim arLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation(oContext.Request.UserHostAddress)
+            Dim arLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation(HttpUtility.UrlDecode(oContext.Request.Form("ip")))
+            'Dim arLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation(oContext.Request.UserHostAddress)
             Dim arServerData = New Dictionary(Of String, String)
             arServerData("bandwidth") = sBandwidth
             arServerData("percentage") = sPercentage
             arServerData("latitude") = arLocationData("latitude")
             arServerData("longitude") = arLocationData("longitude")
+            arServerData("hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
 
-            oHttpCache.Insert("rendezvous_server_" & oContext.Request.UserHostAddress, arServerData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
+            'oHttpCache.Insert("rendezvous_server_" & oContext.Request.UserHostAddress, arServerData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
+            oHttpCache.Insert("rendezvous_server_" & HttpUtility.UrlDecode(oContext.Request.Form("ip")), arServerData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
 
         End If
         ZSSOUtilities.WriteLog("SetRDVStatus : OK")

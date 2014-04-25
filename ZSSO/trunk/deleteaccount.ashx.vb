@@ -27,7 +27,7 @@ Public Class deleteaccount
                 sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
                 sPassword = HttpUtility.UrlDecode(oContext.Request.Form("password"))
 
-                ZSSOUtilities.WriteLog("DeleteAccount : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
+                ZSSOUtilities.WriteLog("DeleteAccount : " & ZSSOUtilities.oSerializer.Serialize({sEmail}))
                 If String.IsNullOrEmpty(sEmail) Or String.IsNullOrEmpty(sPassword) Then
                     oContext.Response.StatusCode = 432
                     oContext.Response.Write("Missing parameter")
@@ -54,7 +54,7 @@ Public Class deleteaccount
                         Return
                     End If
 
-                    Dim sQuery = "UPDATE Account SET [Deleted] = GETDATE() WHERE email=@email"
+                    Dim sQuery = "UPDATE Account SET Deleted = GETDATE() WHERE email=@email"
 
                     Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
                         oSqlCmdUpdate.Parameters.AddWithValue("@email", sEmail)

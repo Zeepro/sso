@@ -14,7 +14,8 @@ Public Class listrendezvous
         Dim sSerial As String = ""
         Dim sToken As String = ""
         Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
-        Dim arPrinterLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation(oContext.Request.UserHostAddress)
+        'Dim arPrinterLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation(oContext.Request.UserHostAddress)
+        Dim arPrinterLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation("88.175.62.75")
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
@@ -22,7 +23,7 @@ Public Class listrendezvous
         Else
             sSerial = HttpUtility.UrlDecode(oContext.Request.Form("serial"))
 
-            ZSSOUtilities.WriteLog("ListRDV : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
+            ZSSOUtilities.WriteLog("ListRDV : " & ZSSOUtilities.oSerializer.Serialize({sSerial}))
             If String.IsNullOrEmpty(sSerial) Then
                 oContext.Response.StatusCode = 432
                 oContext.Response.Write("Missing parameter")
@@ -42,9 +43,9 @@ Public Class listrendezvous
                     oSqlCmd.Parameters.AddWithValue("@serial", sSerial)
 
                     Try
-                        Using QueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
+                        Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
 
-                            If Not QueryResult.HasRows Then
+                            If Not oQueryResult.HasRows Then
                                 oContext.Response.StatusCode = 436
                                 oContext.Response.Write("Unknown printer")
                                 ZSSOUtilities.WriteLog("ListRDV : Unknown printer")

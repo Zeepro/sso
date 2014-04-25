@@ -35,7 +35,7 @@ Public Class sendpassword
             oHttpCache.Insert("request_newpassword_" & oContext.Request.UserHostAddress, iCachedCounterByIp, Nothing, DateTime.Now.AddMinutes(10.0), TimeSpan.Zero)
             If oContext.Request.HttpMethod = "GET" Then
                 sEmail = HttpUtility.UrlDecode(oContext.Request.QueryString("email"))
-                ZSSOUtilities.WriteLog("SendPassword : " & oContext.Request.QueryString("email"))
+                ZSSOUtilities.WriteLog("SendPassword : " & ZSSOUtilities.oSerializer.Serialize({sEmail}))
                 If Not testaccount.SearchEmail(sEmail) Then
                     oContext.Response.ContentType = "text/plain"
                     oContext.Response.StatusCode = 433
@@ -50,7 +50,7 @@ Public Class sendpassword
                 Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                     oConnexion.Open()
 
-                    Dim sQuery = "UPDATE Account SET Password = @new_password WHERE email=@email AND [Deleted] = NULL"
+                    Dim sQuery = "UPDATE Account SET Password = @new_password WHERE email=@email AND Deleted IS NULL"
 
                     Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
 

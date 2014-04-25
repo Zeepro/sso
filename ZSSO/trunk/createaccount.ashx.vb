@@ -28,7 +28,7 @@ Public Class createaccount
                 sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
                 sPassword = HttpUtility.UrlDecode(oContext.Request.Form("password"))
 
-                ZSSOUtilities.WriteLog("CreateAccount : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
+                ZSSOUtilities.WriteLog("CreateAccount : " & ZSSOUtilities.oSerializer.Serialize({sEmail}))
                 If String.IsNullOrEmpty(sEmail) Or String.IsNullOrEmpty(sPassword) Then
                     oContext.Response.StatusCode = 432
                     oContext.Response.Write("Missing parameter")

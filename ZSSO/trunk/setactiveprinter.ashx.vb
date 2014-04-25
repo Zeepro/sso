@@ -24,7 +24,7 @@ Public Class setactiveprinter
             sSerial = HttpUtility.UrlDecode(oContext.Request.Form("serial"))
             sIp = HttpUtility.UrlDecode(oContext.Request.Form("ip"))
             sToken = HttpUtility.UrlDecode(oContext.Request.Form("token"))
-            ZSSOUtilities.WriteLog("SetActivePrinter : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
+            ZSSOUtilities.WriteLog("SetActivePrinter : " & ZSSOUtilities.oSerializer.Serialize({sSerial, sIp, sToken}))
 
             If String.IsNullOrEmpty(sSerial) Or String.IsNullOrEmpty(sIp) Or String.IsNullOrEmpty(sToken) Then
                 oContext.Response.StatusCode = 432
