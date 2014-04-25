@@ -10,70 +10,65 @@ Imports BCrypt.Net.BCrypt
 Public Class changepassword
     Implements System.Web.IHttpHandler
 
-    Sub ProcessRequest(ByVal context As HttpContext) Implements IHttpHandler.ProcessRequest
-        Dim Email As String
-        Dim OldPassword As String
-        Dim NewPassword As String
-        Dim AccountSalt = ""
-        Dim cacheMemory As ObjectCache = MemoryCache.Default
+    Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
+        Dim sEmail As String
+        Dim sOldPassword As String
+        Dim sNewPassword As String
 
-        If ZSSOUtilities.CheckRequests(context.Request.UserHostAddress, "changepassword") > 5 Then
-            context.Response.ContentType = "text/plain"
-            context.Response.StatusCode = 435
-            context.Response.Write("Too many requests")
+        If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "changepassword") > 5 Then
+            oContext.Response.ContentType = "text/plain"
+            oContext.Response.StatusCode = 435
+            oContext.Response.Write("Too many requests")
             ZSSOUtilities.WriteLog("ChangePassword : Too many requests")
             Return
         Else
-            If context.Request.HttpMethod = "GET" Then
-                context.Response.ContentType = "text/html"
-                context.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/changepassword.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />old password <input id=""old_password"" name=""old_password"" type=""text"" /><br />new password <input id=""new_password"" name=""new_password"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            If oContext.Request.HttpMethod = "GET" Then
+                oContext.Response.ContentType = "text/html"
+                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/changepassword.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />old password <input id=""old_password"" name=""old_password"" type=""text"" /><br />new password <input id=""new_password"" name=""new_password"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
             Else
-                Email = HttpUtility.UrlDecode(context.Request.Form("email"))
-                OldPassword = HttpUtility.UrlDecode(context.Request.Form("old_password"))
-                NewPassword = HttpUtility.UrlDecode(context.Request.Form("new_password"))
+                sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
+                sOldPassword = HttpUtility.UrlDecode(oContext.Request.Form("old_password"))
+                sNewPassword = HttpUtility.UrlDecode(oContext.Request.Form("new_password"))
 
-                ZSSOUtilities.WriteLog("ChangePassword : " + ZSSOUtilities.oSerializer.Serialize(context.Request.Form))
-                If String.IsNullOrEmpty(Email) Or String.IsNullOrEmpty(OldPassword) Or String.IsNullOrEmpty(NewPassword) Then
-                    context.Response.StatusCode = 432
-                    context.Response.Write("Missing parameter")
+                ZSSOUtilities.WriteLog("ChangePassword : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
+                If String.IsNullOrEmpty(sEmail) Or String.IsNullOrEmpty(sOldPassword) Or String.IsNullOrEmpty(sNewPassword) Then
+                    oContext.Response.StatusCode = 432
+                    oContext.Response.Write("Missing parameter")
                     ZSSOUtilities.WriteLog("ChangePassword : Missing parameter")
                     Return
                 End If
 
-                'check required password pattern
-                If Not (ZSSOUtilities.emailExpression.IsMatch(Email)) Then
-                    context.Response.ContentType = "text/plain"
-                    context.Response.StatusCode = 433
-                    context.Response.Write("Incorrect Parameter")
+                If Not (ZSSOUtilities.oEmailRegex.IsMatch(sEmail)) Then
+                    oContext.Response.ContentType = "text/plain"
+                    oContext.Response.StatusCode = 433
+                    oContext.Response.Write("Incorrect Parameter")
                     ZSSOUtilities.WriteLog("ChangePassword : Incorrect parameter")
                     Return
                 End If
 
-                Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
+                Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                     oConnexion.Open()
 
-                    If Not ZSSOUtilities.Login(oConnexion, Email, OldPassword) Then
-                        context.Response.ContentType = "text/plain"
-                        context.Response.StatusCode = 434
-                        context.Response.Write("Login failed")
+                    If Not ZSSOUtilities.Login(oConnexion, sEmail, sOldPassword) Then
+                        oContext.Response.ContentType = "text/plain"
+                        oContext.Response.StatusCode = 434
+                        oContext.Response.Write("Login failed")
                         ZSSOUtilities.WriteLog("ChangePassword : Login failed")
                         Return
                     End If
 
-                    Dim QueryString = "UPDATE Account SET Password = @new_password WHERE email=@email"
+                    Dim sQuery = "UPDATE Account SET Password = @new_password WHERE email=@email"
 
-                    Using oSqlCmdDelete As New SqlCommand(QueryString, oConnexion)
+                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
 
-                        Dim Salt = BCrypt.Net.BCrypt.GenerateSalt()
-                        Dim NewPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(NewPassword, Salt)
+                        Dim sNewPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sNewPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
-                        oSqlCmdDelete.Parameters.AddWithValue("@email", Email)
-                        oSqlCmdDelete.Parameters.AddWithValue("@new_password", NewPasswordHash)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@email", sEmail)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@new_password", sNewPasswordHash)
 
                         Try
-                            oSqlCmdDelete.ExecuteNonQuery()
+                            oSqlCmdUpdate.ExecuteNonQuery()
                         Catch ex As Exception
-                            'context.Response.Write("Error : " + " commande " + ex.Message)
                             Return
                         End Try
 

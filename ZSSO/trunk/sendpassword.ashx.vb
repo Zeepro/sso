@@ -12,57 +12,56 @@ Imports BCrypt.Net.BCrypt
 Public Class sendpassword
     Implements System.Web.IHttpHandler
 
-    Sub ProcessRequest(ByVal context As HttpContext) Implements IHttpHandler.ProcessRequest
-        Dim Email As String
-        Dim NewPassword As String
-        Dim cachedCounterByIp As Int32
-        Dim EmailFound As Boolean = False
-        Dim HttpCache As Caching.Cache = HttpRuntime.Cache
+    Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
+        Dim sEmail As String
+        Dim sNewPassword As String
+        Dim iCachedCounterByIp As Int32
+        Dim bEmailFound As Boolean = False
+        Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
 
         Try
-            cachedCounterByIp = CInt(HttpCache("request_newpassword_" + context.Request.UserHostAddress))
+            iCachedCounterByIp = CInt(oHttpCache("request_newpassword_" & oContext.Request.UserHostAddress))
         Catch
-            cachedCounterByIp = 0
+            iCachedCounterByIp = 0
         End Try
-        If cachedCounterByIp > 3 Then
-            context.Response.ContentType = "text/plain"
-            context.Response.StatusCode = 435
-            context.Response.Write("Too many requests")
+        If iCachedCounterByIp > 3 Then
+            oContext.Response.ContentType = "text/plain"
+            oContext.Response.StatusCode = 435
+            oContext.Response.Write("Too many requests")
             ZSSOUtilities.WriteLog("SendPassword : Too many requests")
             Return
         Else
-            cachedCounterByIp = cachedCounterByIp + 1
-            HttpCache.Insert("request_newpassword_" + context.Request.UserHostAddress, cachedCounterByIp, Nothing, DateTime.Now.AddMinutes(10.0), TimeSpan.Zero)
-            If context.Request.HttpMethod = "GET" Then
-                Email = HttpUtility.UrlDecode(context.Request.QueryString("email"))
-                ZSSOUtilities.WriteLog("SendPassword : " + context.Request.QueryString("email"))
-                If Not testaccount.SearchEmail(Email) Then
-                    context.Response.ContentType = "text/plain"
-                    context.Response.StatusCode = 433
-                    context.Response.Write("Incorrect Parameter")
+            iCachedCounterByIp = iCachedCounterByIp + 1
+            oHttpCache.Insert("request_newpassword_" & oContext.Request.UserHostAddress, iCachedCounterByIp, Nothing, DateTime.Now.AddMinutes(10.0), TimeSpan.Zero)
+            If oContext.Request.HttpMethod = "GET" Then
+                sEmail = HttpUtility.UrlDecode(oContext.Request.QueryString("email"))
+                ZSSOUtilities.WriteLog("SendPassword : " & oContext.Request.QueryString("email"))
+                If Not testaccount.SearchEmail(sEmail) Then
+                    oContext.Response.ContentType = "text/plain"
+                    oContext.Response.StatusCode = 433
+                    oContext.Response.Write("Incorrect Parameter")
                     ZSSOUtilities.WriteLog("SendPassword : Incorrect parameter")
                     Return
                 End If
 
-                NewPassword = System.Web.Security.Membership.GeneratePassword(8, 0)
-                Dim Salt = BCrypt.Net.BCrypt.GenerateSalt()
-                Dim PasswordHash As String = BCrypt.Net.BCrypt.HashPassword(NewPassword, Salt)
+                sNewPassword = System.Web.Security.Membership.GeneratePassword(8, 0)
+                Dim sPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sNewPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
-                Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
+                Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                     oConnexion.Open()
 
-                    Dim QueryString = "UPDATE Account SET Password = @new_password WHERE email=@email"
+                    Dim sQuery = "UPDATE Account SET Password = @new_password WHERE email=@email AND [Delete] = NULL"
 
-                    Using oSqlCmdUpdate As New SqlCommand(QueryString, oConnexion)
+                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
 
-                        oSqlCmdUpdate.Parameters.AddWithValue("@email", Email)
-                        oSqlCmdUpdate.Parameters.AddWithValue("@new_password", PasswordHash)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@email", sEmail)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@new_password", sPasswordHash)
 
                         Try
                             If oSqlCmdUpdate.ExecuteNonQuery() < 1 Then
-                                context.Response.ContentType = "text/plain"
-                                context.Response.StatusCode = 434
-                                context.Response.Write("Email not found")
+                                oContext.Response.ContentType = "text/plain"
+                                oContext.Response.StatusCode = 434
+                                oContext.Response.Write("Email not found")
                                 ZSSOUtilities.WriteLog("SendPassword : Email not found")
                                 Return
                             End If
@@ -72,24 +71,24 @@ Public Class sendpassword
 
                     End Using
 
-                    QueryString = "SELECT TOP 1 HtmlTemplate FROM EmailTemplate WHERE Name = @template_name"
-                    Using oSqlSelectTemplace As New SqlCommand(QueryString, oConnexion)
-                        oSqlSelectTemplace.Parameters.AddWithValue("@template_name", "sendpassword")
+                    sQuery = "SELECT TOP 1 HtmlTemplate FROM EmailTemplate WHERE Name = @template_name"
+                    Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
+                        oSqlCmdSelect.Parameters.AddWithValue("@template_name", "sendpassword")
 
-                        Using QueryResult As SqlDataReader = oSqlSelectTemplace.ExecuteReader()
-                            Dim Template As String = ""
+                        Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                            Dim sTemplate As String = ""
 
-                            If QueryResult.Read() Then
-                                Template = QueryResult(QueryResult.GetOrdinal("HtmlTemplate"))
+                            If oQueryResult.Read() Then
+                                sTemplate = oQueryResult(oQueryResult.GetOrdinal("HtmlTemplate"))
                             End If
 
-                            If Template.Length > 0 Then
-                                Dim HtmlTemplate = String.Format(Template, NewPassword)
-                                Dim HtmlEmail As New Mail
-                                HtmlEmail.receiver = Email
-                                HtmlEmail.subject = "Demande de nouveau mot de passe"
-                                HtmlEmail.body = HtmlTemplate
-                                HtmlEmail.send()
+                            If sTemplate.Length > 0 Then
+                                Dim sHtmlTemplate = String.Format(sTemplate, sNewPassword)
+                                Dim oHtmlEmail As New Mail
+                                oHtmlEmail.sReceiver = sEmail
+                                oHtmlEmail.sSubject = "Demande de nouveau mot de passe"
+                                oHtmlEmail.sBody = sHtmlTemplate
+                                oHtmlEmail.Send()
                             End If
                         End Using
                     End Using
@@ -108,27 +107,27 @@ Public Class sendpassword
 End Class
 
 Public NotInheritable Class Mail
-    Public Property subject As String
-    Public Property body As String
-    Public Property receiver As String
+    Public Property sSubject As String
+    Public Property sBody As String
+    Public Property sReceiver As String
 
-    Public Sub send()
+    Public Sub Send()
         Try
-            Dim smtpServer As New SmtpClient()
-            Dim mail As New MailMessage()
-            smtpServer.UseDefaultCredentials = False
-            smtpServer.Credentials = New Net.NetworkCredential("service-informatique@zee3dcompany.com", "uBXf9JhuFAg7FfeJVAVvkA")
-            smtpServer.Port = 587
-            smtpServer.EnableSsl = True
-            smtpServer.Host = "smtp.mandrillapp.com"
+            Dim oSmtpServer As New SmtpClient()
+            Dim oMail As New MailMessage()
+            oSmtpServer.UseDefaultCredentials = False
+            oSmtpServer.Credentials = New Net.NetworkCredential("service-informatique@zee3dcompany.com", "uBXf9JhuFAg7FfeJVAVvkA")
+            oSmtpServer.Port = 587
+            oSmtpServer.EnableSsl = True
+            oSmtpServer.Host = "smtp.mandrillapp.com"
 
-            mail = New MailMessage()
-            mail.From = New MailAddress("service-informatique@zee3dcompany.com")
-            mail.To.Add(receiver)
-            mail.Subject = subject
-            mail.IsBodyHtml = True
-            mail.Body = body
-            smtpServer.Send(mail)
+            oMail = New MailMessage()
+            oMail.From = New MailAddress("service-informatique@zee3dcompany.com")
+            oMail.To.Add(sReceiver)
+            oMail.Subject = sSubject
+            oMail.IsBodyHtml = True
+            oMail.Body = sBody
+            oSmtpServer.Send(oMail)
         Catch ex As Exception
             'MsgBox(ex.Message & vbNewLine & ex.StackTrace)
         End Try

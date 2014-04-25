@@ -10,71 +10,69 @@ Imports System.IO
 Public Class setactiveprinter
     Implements System.Web.IHttpHandler
 
-    Sub ProcessRequest(ByVal context As HttpContext) Implements IHttpHandler.ProcessRequest
-        Dim Serial As String = ""
-        Dim Ip As String = ""
-        Dim Token As String = ""
-        Dim SerialFound As Boolean = False
-        Dim HttpMemory As Caching.Cache = HttpRuntime.Cache
+    Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
+        Dim sSerial As String = ""
+        Dim sIp As String = ""
+        Dim sToken As String = ""
+        Dim bSerialFound As Boolean = False
+        Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
 
-        If context.Request.HttpMethod = "GET" Then
-            context.Response.ContentType = "text/html"
-            context.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setactiveprinter.ashx"" accept-charset=""utf-8"">Serial <input id=""serial"" name=""serial"" type=""text"" /><br />Local IP <input id=""ip"" name=""ip"" type=""text"" /><br />Token <input id=""token"" name=""token"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+        If oContext.Request.HttpMethod = "GET" Then
+            oContext.Response.ContentType = "text/html"
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setactiveprinter.ashx"" accept-charset=""utf-8"">Serial <input id=""serial"" name=""serial"" type=""text"" /><br />Local IP <input id=""ip"" name=""ip"" type=""text"" /><br />Token <input id=""token"" name=""token"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
         Else
-            Serial = HttpUtility.UrlDecode(context.Request.Form("serial"))
-            Ip = HttpUtility.UrlDecode(context.Request.Form("ip"))
-            Token = HttpUtility.UrlDecode(context.Request.Form("token"))
-            ZSSOUtilities.WriteLog("SetActivePrinter : " + ZSSOUtilities.oSerializer.Serialize(context.Request.Form))
+            sSerial = HttpUtility.UrlDecode(oContext.Request.Form("serial"))
+            sIp = HttpUtility.UrlDecode(oContext.Request.Form("ip"))
+            sToken = HttpUtility.UrlDecode(oContext.Request.Form("token"))
+            ZSSOUtilities.WriteLog("SetActivePrinter : " & ZSSOUtilities.oSerializer.Serialize(oContext.Request.Form))
 
-            If String.IsNullOrEmpty(Serial) Or String.IsNullOrEmpty(Ip) Or String.IsNullOrEmpty(Token) Then
-                context.Response.StatusCode = 432
-                context.Response.Write("Missing parameter")
+            If String.IsNullOrEmpty(sSerial) Or String.IsNullOrEmpty(sIp) Or String.IsNullOrEmpty(sToken) Then
+                oContext.Response.StatusCode = 432
+                oContext.Response.Write("Missing parameter")
                 ZSSOUtilities.WriteLog("SetActivePrinter : Missing parameter")
                 Return
             End If
 
-            Dim Ipa As IPAddress = Nothing
-            If Not (IPAddress.TryParse(Ip, Ipa)) Then
-                context.Response.StatusCode = 433
-                context.Response.Write("Incorrect Parameter")
+            Dim oIpa As IPAddress = Nothing
+            If Not (IPAddress.TryParse(sIp, oIpa)) Then
+                oContext.Response.StatusCode = 433
+                oContext.Response.Write("Incorrect Parameter")
                 ZSSOUtilities.WriteLog("SetActivePrinter : Incorrect parameter")
                 Return
             End If
 
-            Using oConnexion As New SqlConnection(ZSSOUtilities.getConnectionString())
+            Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                 oConnexion.Open()
 
-                Dim QueryString = "SELECT TOP 1 Serial " & _
+                Dim sQuery = "SELECT TOP 1 Serial " & _
                     "FROM Printer " & _
                     "WHERE Serial=@serial"
 
-                Using oSqlCmd As New SqlCommand(QueryString, oConnexion)
+                Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
 
-                    oSqlCmd.Parameters.AddWithValue("@serial", Serial)
+                    oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial)
 
                     Try
-                        Using QueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
-                            If QueryResult.HasRows Then
-                                SerialFound = True
+                        Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                            If oQueryResult.HasRows Then
+                                bSerialFound = True
                             End If
                         End Using
                     Catch ex As Exception
-                        'context.Response.Write("Error : " + "Sauvegarde commande " + ex.Message)
-                        Return
                     End Try
                 End Using
 
             End Using
 
-            If SerialFound Then
-                Dim SerialData = New Dictionary(Of String, String)
-                SerialData("local_ip") = Ip
-                SerialData("token") = Token
-                SerialData("server_hostname") = Dns.GetHostEntry(context.Request.UserHostAddress).HostName + ".zeepro.com"
-                HttpMemory.Insert("printer_" + Serial, SerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
+            If bSerialFound Then
+                Dim arSerialData = New Dictionary(Of String, String)
+                arSerialData("local_ip") = sIp
+                arSerialData("token") = sToken
+                arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName & ".zeepro.com"
+                oHttpCache.Insert("printer_" & sSerial, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
             Else
-                context.Response.StatusCode = 436
-                context.Response.Write("Unknown printer")
+                oContext.Response.StatusCode = 436
+                oContext.Response.Write("Unknown printer")
                 ZSSOUtilities.WriteLog("SetActivePrinter : Unknown printer")
                 Return
             End If

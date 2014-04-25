@@ -10,141 +10,99 @@ Imports BCrypt.Net.BCrypt
 Imports System.Net.Cache
 
 Public Class ZSSOUtilities
-    Public Shared emailExpression As New Regex("^[_a-z0-9-]+(.[a-z0-9-]+)@[a-z0-9-]+(.[a-z0-9-]+)*(.[a-z]{2,4})$")
+    Public Shared oEmailRegex As New Regex("^[_a-z0-9-]+(.[a-z0-9-]+)@[a-z0-9-]+(.[a-z0-9-]+)*(.[a-z]{2,4})$")
     Public Shared oSerializer As New JavaScriptSerializer
 
-    Public Shared Function Login(oConnexion As SqlConnection, Email As String, Password As String) As Boolean
-        Dim QueryString = "SELECT TOP 1 * " & _
+    Public Shared Function Login(oConnexion As SqlConnection, sEmail As String, sPassword As String) As Boolean
+        Dim sQuery = "SELECT TOP 1 * " & _
             "FROM Account " & _
-            "WHERE Email=@email"
+            "WHERE Email=@email AND [Delete] = NULL"
 
-        Using oSqlCmdSelect As New SqlCommand(QueryString, oConnexion)
-            oSqlCmdSelect.Parameters.AddWithValue("@email", Email)
-
-            'Try
-            '    Using QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
-            '        Dim AccountHash = ""
-
-            '        If QueryResult.Read() Then
-            '            AccountHash = QueryResult(QueryResult.GetOrdinal("Password"))
-            '        End If
-
-            '        If Not BCrypt.Net.BCrypt.Verify(Password, AccountHash) Then
-            '            Return False
-            '        End If
-            '    End Using
-            'Catch ex As Exception
-            '    Return False
-            'End Try
-
-            'TODO: Essaie de limiter les " chemins " :
-
+        Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
+            oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail)
             Try
-                Using QueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
-                    Dim AccountHash = ""
-
-                    If QueryResult.Read() Then
-                        AccountHash = QueryResult(QueryResult.GetOrdinal("Password"))
-                        If BCrypt.Net.BCrypt.Verify(Password, AccountHash) Then
+                Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                    If oQueryResult.Read() Then
+                        If BCrypt.Net.BCrypt.Verify(sPassword, oQueryResult(oQueryResult.GetOrdinal("Password"))) Then
                             Return True
                         End If
                     End If
                 End Using
             Catch
             End Try
-
         End Using
+
         Return False
     End Function
 
-    Public Shared Function getConnectionString() As String
-        'TODO: Juste ceci dans les fonctions appelantes : System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString
-        Dim rootWebConfig As System.Configuration.Configuration
-        rootWebConfig = System.Web.Configuration.WebConfigurationManager.OpenWebConfiguration("/Web")
-        Dim connString As System.Configuration.ConnectionStringSettings = Nothing
-        If (rootWebConfig.ConnectionStrings.ConnectionStrings.Count > 0) Then
-            connString = rootWebConfig.ConnectionStrings.ConnectionStrings("ZSSODb")
-        End If
-        If IsNothing(connString) Then
-            Return ""
-        End If
-        Return connString.ToString()
-    End Function
-
-    Public Shared Function WriteLog(Text As String)
-        Using oConnexion As New SqlConnection(getConnectionString())
+    Public Shared Function WriteLog(sText As String)
+        Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
             oConnexion.Open()
-            Dim QueryString As String = "INSERT INTO Logs VALUES (DEFAULT, @text)"
+            Dim sQuery As String = "INSERT INTO Logs (Text) VALUES (@text)"
 
-            Using oSqlCmdInsert As New SqlCommand(QueryString, oConnexion)
+            Using oSqlCmdInsert As New SqlCommand(sQuery, oConnexion)
                 Try
-                    oSqlCmdInsert.Parameters.AddWithValue("@text", Text)
+                    oSqlCmdInsert.Parameters.AddWithValue("@text", sText)
                     oSqlCmdInsert.ExecuteNonQuery()
                 Catch ex As Exception
-
                 End Try
             End Using
         End Using
         Return Nothing
     End Function
 
-    Public Shared Function CheckRequests(Ip As String, Type As String)
-        Dim HttpCache As Caching.Cache = HttpRuntime.Cache
-        Dim cachedCounterByIp As Int32
+    Public Shared Function CheckRequests(sIp As String, sType As String)
+        Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
+        Dim iCachedCounterByIp As Int32
 
         Try
-            'cachedCounterByIp = CInt(HttpCache("request_" + Type + "_" + Ip))
-            'TODO: Cela devrait marcher (et c'est plus simple)
-            cachedCounterByIp = CInt(HttpRuntime.Cache(("request_" + Type + "_" + Ip))
+            iCachedCounterByIp = CInt(oHttpCache("request_" & sType & "_" & sIp))
         Catch
-            'TODO: Si l'élément n'existe pas cela devrait renvoyer Nothing -> pas d'erreur ; à tester
-            cachedCounterByIp = 0
+            iCachedCounterByIp = 0
         End Try
 
-        cachedCounterByIp = cachedCounterByIp + 1
-        HttpCache.Insert("request_" + Type + "_" + Ip, cachedCounterByIp, Nothing, DateTime.Now.AddSeconds(5.0), TimeSpan.Zero)
-        Return cachedCounterByIp
+        iCachedCounterByIp = iCachedCounterByIp + 1
+        oHttpCache.Insert("request_" & sType & "_" & sIp, iCachedCounterByIp, Nothing, DateTime.Now.AddSeconds(5.0), TimeSpan.Zero)
+        Return iCachedCounterByIp
     End Function
 
-    Public Shared Function GetLocation(Ip As String) As Dictionary(Of String, String)
-        Dim LocationData As Dictionary(Of String, String)
+    Public Shared Function GetLocation(sIp As String) As Dictionary(Of String, String)
+        Dim arLocationData As Dictionary(Of String, String)
         Try
-            Dim rssReq As WebRequest = WebRequest.Create("https://freegeoip.net/json/" + Ip)
-            'TODO: Using rssReq AS New...
-            Using respStream As Stream = rssReq.GetResponse().GetResponseStream()
-                Dim response As String = New StreamReader(respStream).ReadToEnd()
+            Dim oRequest As WebRequest = WebRequest.Create("https://freegeoip.net/json/" & sIp)
+            Using oResponseStream As Stream = oRequest.GetResponse().GetResponseStream()
+                Dim sResponse As String = New StreamReader(oResponseStream).ReadToEnd()
 
-                LocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(response)
+                arLocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
             End Using
-            Return LocationData
+            Return arLocationData
         Catch ex As Exception
-            Return Nothing
         End Try
+        Return Nothing
     End Function
 
-    Public Shared Function CalculateDistanceBetweenCoordinates(ServerLatitudeString As String, ServerLongitudeString As String, PrinterLatitudeString As String, PrinterLongitudeString As String)
+    Public Shared Function CalculateDistanceBetweenCoordinates(sServerLatitude As String, sServerLongitude As String, sPrinterLatitude As String, sPrinterLongitude As String)
         Dim ciClone As CultureInfo = CType(CultureInfo.InvariantCulture.Clone(), CultureInfo)
         ciClone.NumberFormat.NumberDecimalSeparator = "."
 
-        Dim ServerLatitude As Double = CDbl(ServerLatitudeString)
-        Dim ServerLongitude As Double = CDbl(ServerLongitudeString)
-        Dim PrinterLatitude As Double = CDbl(PrinterLatitudeString)
-        Dim PrinterLongitude As Double = CDbl(PrinterLongitudeString)
+        Dim dServerLatitude As Double = CDbl(sServerLatitude)
+        Dim dServerLongitude As Double = CDbl(sServerLongitude)
+        Dim dPrinterLatitude As Double = CDbl(sPrinterLatitude)
+        Dim dPrinterLongitude As Double = CDbl(sPrinterLongitude)
 
-        Dim theta As Double = ServerLongitude - PrinterLongitude
-        Dim dist As Double = Math.Sin(deg2rad(ServerLatitude)) * Math.Sin(deg2rad(PrinterLatitude)) + Math.Cos(deg2rad(ServerLatitude)) * Math.Cos(deg2rad(PrinterLatitude)) * Math.Cos(deg2rad(theta))
-        dist = Math.Acos(dist)
-        dist = rad2deg(dist)
-        dist = dist * 60 * 1.1515 'miles
+        Dim dDistance As Double = Math.Sin(deg2rad(dServerLatitude)) * Math.Sin(deg2rad(dPrinterLatitude)) + Math.Cos(deg2rad(dServerLatitude)) * Math.Cos(deg2rad(dPrinterLatitude)) * Math.Cos(deg2rad(dServerLongitude - dPrinterLongitude))
+        dDistance = Math.Acos(dDistance)
+        dDistance = rad2deg(dDistance)
+        dDistance = dDistance * 60 * 1.1515 'miles
         ' dist = dist * 1.609344 'kilometers
-        Return dist
+        Return dDistance
     End Function
 
-    Private Shared Function deg2rad(ByVal deg As Double) As Double
-        Return (deg * Math.PI / 180.0)
+    Private Shared Function deg2rad(ByVal dDegree As Double) As Double
+        Return (dDegree * Math.PI / 180.0)
     End Function
 
-    Private Shared Function rad2deg(ByVal rad As Double) As Double
-        Return rad / Math.PI * 180.0
+    Private Shared Function rad2deg(ByVal dRadian As Double) As Double
+        Return dRadian / Math.PI * 180.0
     End Function
 End Class
