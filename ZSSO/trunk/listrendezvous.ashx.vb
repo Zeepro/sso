@@ -15,13 +15,18 @@ Public Class listrendezvous
         Dim sToken As String = ""
         Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
         'Dim arPrinterLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation(oContext.Request.UserHostAddress)
-        Dim arPrinterLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation("88.175.62.75")
+        Dim arPrinterLocationData As Dictionary(Of String, String)
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/listrendezvous.ashx"" accept-charset=""utf-8"">Serial <input id=""serial"" name=""serial"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/listrendezvous.ashx"" accept-charset=""utf-8"">Serial <input id=""serial"" name=""serial"" type=""text"" /><br />Ip <input id=""ip"" name=""ip"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
         Else
             sSerial = HttpUtility.UrlDecode(oContext.Request.Form("serial"))
+
+            ' Code a supprimer lors de la mise en prod (champs a aussi supprimer dans l'html)
+            Dim sIp As String = HttpUtility.UrlDecode(oContext.Request.Form("ip"))
+            arPrinterLocationData = ZSSOUtilities.GetLocation(sIp)
+            ' Fin du code a supprimer
 
             ZSSOUtilities.WriteLog("ListRDV : " & ZSSOUtilities.oSerializer.Serialize({sSerial}))
             If String.IsNullOrEmpty(sSerial) Then

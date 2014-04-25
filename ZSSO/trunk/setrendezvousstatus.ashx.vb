@@ -17,7 +17,7 @@ Public Class setrendezvousstatus
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setrendezvousstatus.ashx"" accept-charset=""utf-8"">Bandwith <input id=""bandwidth"" name=""bandwidth"" type=""text"" /><br />Percentage <input id=""percentage"" name=""percentage"" type=""text"" /><br />Ip <input id=""ip"" name=""ip"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setrendezvousstatus.ashx"" accept-charset=""utf-8"">Bandwith <input id=""bandwidth"" name=""bandwidth"" type=""text"" /><br />Percentage <input id=""percentage"" name=""percentage"" type=""text"" /><br />Ip <input id=""ip"" name=""ip"" type=""text"" /><br />Hostname <input id=""hostname"" name=""hostname"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
         Else
             sBandwidth = HttpUtility.UrlDecode(oContext.Request.Form("bandwidth"))
             sPercentage = HttpUtility.UrlDecode(oContext.Request.Form("percentage"))
@@ -38,7 +38,8 @@ Public Class setrendezvousstatus
             arServerData("percentage") = sPercentage
             arServerData("latitude") = arLocationData("latitude")
             arServerData("longitude") = arLocationData("longitude")
-            arServerData("hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
+            ' arServerData("hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
+            arServerData("hostname") = HttpUtility.UrlDecode(oContext.Request.Form("hostname"))
 
             'oHttpCache.Insert("rendezvous_server_" & oContext.Request.UserHostAddress, arServerData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
             oHttpCache.Insert("rendezvous_server_" & HttpUtility.UrlDecode(oContext.Request.Form("ip")), arServerData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
