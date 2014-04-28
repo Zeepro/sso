@@ -74,6 +74,19 @@ Public Class addprinter
 
                     End Using
 
+                    sQuery = "UPDATE AccountPrinterAssociation SET Deleted = GETDATE() WHERE Serial = @serial AND Deleted IS NULL"
+
+                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@serial", sSerial)
+
+                        Try
+                            oSqlCmdUpdate.ExecuteNonQuery()
+                        Catch ex As Exception
+                            'context.Response.Write("Error : " + " commande " + ex.Message)
+                            Return
+                        End Try
+                    End Using
+
                     sQuery = "INSERT INTO AccountPrinterAssociation (Serial, Email) VALUES (@serial, @email)"
 
                     Using oSqlCmdInsert As New SqlCommand(sQuery, oConnexion)
