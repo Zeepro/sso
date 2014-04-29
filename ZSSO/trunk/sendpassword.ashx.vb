@@ -71,22 +71,24 @@ Public Class sendpassword
 
                     End Using
 
-                    sQuery = "SELECT TOP 1 HtmlTemplate FROM EmailTemplate WHERE Name = @template_name"
+                    sQuery = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name"
                     Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
                         oSqlCmdSelect.Parameters.AddWithValue("@template_name", "sendpassword")
 
                         Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
                             Dim sTemplate As String = ""
+                            Dim sSubject As String = ""
 
                             If oQueryResult.Read() Then
                                 sTemplate = oQueryResult(oQueryResult.GetOrdinal("HtmlTemplate"))
+                                sSubject = oQueryResult(oQueryResult.GetOrdinal("Subject"))
                             End If
 
-                            If sTemplate.Length > 0 Then
+                            If sTemplate.Length > 0 And sSubject.Length > 0 Then
                                 Dim sHtmlTemplate = String.Format(sTemplate, sNewPassword)
                                 Dim oHtmlEmail As New Mail
                                 oHtmlEmail.sReceiver = sEmail
-                                oHtmlEmail.sSubject = "Demande de nouveau mot de passe"
+                                oHtmlEmail.sSubject = sSubject
                                 oHtmlEmail.sBody = sHtmlTemplate
                                 oHtmlEmail.Send()
                             End If
