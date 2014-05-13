@@ -1,0 +1,62 @@
+﻿Imports System.Web
+Imports System.Web.Services
+Imports System.Text.RegularExpressions.Regex
+Imports System.Data.SqlClient
+Imports System.Security.Cryptography
+Imports System.Runtime.Caching
+Imports System.IO
+
+Public Class login
+    Implements System.Web.IHttpHandler
+
+    Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
+        Dim sEmail As String
+        Dim sPassword As String
+        Dim iStatusCode As Integer = 202
+
+        If oContext.Request.HttpMethod = "GET" Then
+            oContext.Response.ContentType = "text/html"
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/login.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+        Else
+            sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
+            sPassword = HttpUtility.UrlDecode(oContext.Request.Form("password"))
+
+            ZSSOUtilities.WriteLog("Login : " & ZSSOUtilities.oSerializer.Serialize({sEmail}))
+            If String.IsNullOrEmpty(sEmail) Or String.IsNullOrEmpty(sPassword) Then
+                oContext.Response.StatusCode = 432
+                oContext.Response.Write("Missing parameter")
+                ZSSOUtilities.WriteLog("Login : Missing parameter")
+                Return
+            End If
+
+            If Not (ZSSOUtilities.oEmailRegex.IsMatch(sEmail)) Then
+                oContext.Response.ContentType = "text/plain"
+                oContext.Response.StatusCode = 433
+                oContext.Response.Write("Incorrect Parameter")
+                ZSSOUtilities.WriteLog("Login : Incorrect parameter")
+                Return
+            End If
+
+            Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                oConnection.Open()
+
+                If Not ZSSOUtilities.Login(oConnection, sEmail, sPassword) Then
+                    oContext.Response.ContentType = "text/plain"
+                    oContext.Response.StatusCode = 434
+                    oContext.Response.Write("Login failed")
+                    ZSSOUtilities.WriteLog("Login : Login failed")
+                    Return
+                End If
+                oContext.Response.StatusCode = 202
+            End Using
+            ZSSOUtilities.WriteLog("Login : OK")
+        End If
+    End Sub
+
+    ReadOnly Property IsReusable() As Boolean Implements IHttpHandler.IsReusable
+        Get
+            Return False
+        End Get
+    End Property
+
+End Class

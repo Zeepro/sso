@@ -43,10 +43,10 @@ Public Class deleteaccount
                     Return
                 End If
 
-                Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
-                    oConnexion.Open()
+                Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                    oConnection.Open()
 
-                    If Not ZSSOUtilities.Login(oConnexion, sEmail, sPassword) Then
+                    If Not ZSSOUtilities.Login(oConnection, sEmail, sPassword) Then
                         oContext.Response.ContentType = "text/plain"
                         oContext.Response.StatusCode = 434
                         oContext.Response.Write("Login failed")
@@ -56,22 +56,22 @@ Public Class deleteaccount
 
                     Dim sQuery = "UPDATE Account SET Deleted = GETDATE() WHERE email=@email"
 
-                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
+                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnection)
                         oSqlCmdUpdate.Parameters.AddWithValue("@email", sEmail)
 
                         Try
                             oSqlCmdUpdate.ExecuteNonQuery()
                         Catch ex As Exception
-                            'context.Response.Write("Error : " + " commande " + ex.Message)
+                            ZSSOUtilities.WriteLog("DeleteAccount : NOK : " & ex.Message)
                             Return
                         End Try
 
                     End Using
 
                 End Using
+                ZSSOUtilities.WriteLog("DeleteAccount : OK")
             End If
         End If
-        ZSSOUtilities.WriteLog("DeleteAccount : OK")
     End Sub
 
     ReadOnly Property IsReusable() As Boolean Implements IHttpHandler.IsReusable

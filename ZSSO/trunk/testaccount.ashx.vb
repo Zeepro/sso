@@ -52,20 +52,20 @@ Public Class testaccount
 
                 oContext.Response.ContentType = "text/plain"
                 oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(arReturnValue))
+                ZSSOUtilities.WriteLog("TestAccount : OK : " & ZSSOUtilities.oSerializer.Serialize(arReturnValue))
             End If
         End If
-        ZSSOUtilities.WriteLog("TestAccount : OK : " & ZSSOUtilities.oSerializer.Serialize(arReturnValue))
     End Sub
 
     Public Shared Function SearchEmail(sEmail As String)
-        Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
-            oConnexion.Open()
+        Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+            oConnection.Open()
 
             Dim sQuery = "SELECT TOP 1 Email " & _
                 "FROM Account " & _
                 "WHERE Email=@email"
 
-            Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
+            Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
 
                 oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail)
 
@@ -77,6 +77,7 @@ Public Class testaccount
                         End If
                     End Using
                 Catch ex As Exception
+                    ZSSOUtilities.WriteLog("TestAccount : NOK : " & ex.Message)
                 End Try
             End Using
         End Using

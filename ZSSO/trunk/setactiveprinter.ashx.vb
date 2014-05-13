@@ -19,10 +19,10 @@ Public Class setactiveprinter
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setactiveprinter.ashx"" accept-charset=""utf-8"">Serial <input id=""serial"" name=""serial"" type=""text"" /><br />Local IP <input id=""ip"" name=""ip"" type=""text"" /><br />Token <input id=""token"" name=""token"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setactiveprinter.ashx"" accept-charset=""utf-8"">Serial <input id=""printersn"" name=""printersn"" type=""text"" /><br />Local IP <input id=""localIPaddress"" name=""localIPaddress"" type=""text"" /><br />Token <input id=""token"" name=""token"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
         Else
-            sSerial = HttpUtility.UrlDecode(oContext.Request.Form("serial"))
-            sIp = HttpUtility.UrlDecode(oContext.Request.Form("ip"))
+            sSerial = HttpUtility.UrlDecode(oContext.Request.Form("printersn"))
+            sIp = HttpUtility.UrlDecode(oContext.Request.Form("localIPaddress"))
             sToken = HttpUtility.UrlDecode(oContext.Request.Form("token"))
             ZSSOUtilities.WriteLog("SetActivePrinter : " & ZSSOUtilities.oSerializer.Serialize({sSerial, sIp, sToken}))
 
@@ -41,14 +41,14 @@ Public Class setactiveprinter
                 Return
             End If
 
-            Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
-                oConnexion.Open()
+            Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                oConnection.Open()
 
                 Dim sQuery = "SELECT TOP 1 Serial " & _
                     "FROM Printer " & _
                     "WHERE Serial=@serial"
 
-                Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
+                Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
 
                     oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial)
 
@@ -59,25 +59,31 @@ Public Class setactiveprinter
                             End If
                         End Using
                     Catch ex As Exception
+                        ZSSOUtilities.WriteLog("SetActivePrinter : NOK : " & ex.Message)
                     End Try
                 End Using
 
             End Using
-
-            If bSerialFound Then
-                Dim arSerialData = New Dictionary(Of String, String)
-                arSerialData("local_ip") = sIp
-                arSerialData("token") = sToken
-                arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName & ".zeepro.com"
-                oHttpCache.Insert("printer_" & sSerial, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
-            Else
-                oContext.Response.StatusCode = 436
-                oContext.Response.Write("Unknown printer")
-                ZSSOUtilities.WriteLog("SetActivePrinter : Unknown printer")
+            Try
+                If bSerialFound Then
+                    Dim arSerialData = New Dictionary(Of String, String)
+                    arSerialData("local_ip") = sIp
+                    arSerialData("token") = sToken
+                    arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName & ".zeepro.com"
+                    oHttpCache.Insert("printer_" & sSerial, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
+                Else
+                    oContext.Response.StatusCode = 436
+                    oContext.Response.Write("Unknown printer")
+                    ZSSOUtilities.WriteLog("SetActivePrinter : Unknown printer")
+                    Return
+                End If
+            Catch ex As Exception
+                ZSSOUtilities.WriteLog("SetActivePrinter : NOK : " & ex.Message)
                 Return
-            End If
+            End Try
+
+            ZSSOUtilities.WriteLog("SetActivePrinter : OK")
         End If
-        ZSSOUtilities.WriteLog("SetActivePrinter : OK")
     End Sub
 
     ReadOnly Property IsReusable() As Boolean Implements IHttpHandler.IsReusable

@@ -47,35 +47,36 @@ Public Class sendpassword
                 sNewPassword = System.Web.Security.Membership.GeneratePassword(8, 0)
                 Dim sPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sNewPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
-                Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
-                    oConnexion.Open()
+                Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                    oConnection.Open()
 
-                    Dim sQuery = "UPDATE Account SET Password = @new_password WHERE email=@email AND Deleted IS NULL"
+                    Dim oSqlCmd As SqlCommand = oConnection.CreateCommand()
+                    Dim oTransaction As SqlTransaction = oConnection.BeginTransaction("sendpassword")
 
-                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
+                    oSqlCmd.Connection = oConnection
+                    oSqlCmd.Transaction = oTransaction
 
-                        oSqlCmdUpdate.Parameters.AddWithValue("@email", sEmail)
-                        oSqlCmdUpdate.Parameters.AddWithValue("@new_password", sPasswordHash)
-
-                        Try
-                            If oSqlCmdUpdate.ExecuteNonQuery() < 1 Then
-                                oContext.Response.ContentType = "text/plain"
-                                oContext.Response.StatusCode = 434
-                                oContext.Response.Write("Email not found")
-                                ZSSOUtilities.WriteLog("SendPassword : Email not found")
-                                Return
-                            End If
-                        Catch ex As Exception
+                    Try
+                        'Update new password
+                        oSqlCmd.CommandText = "UPDATE Account SET Password = @new_password WHERE email=@email AND Deleted IS NULL"
+                        oSqlCmd.Parameters.AddWithValue("@email", sEmail)
+                        oSqlCmd.Parameters.AddWithValue("@new_password", sPasswordHash)
+                        If oSqlCmd.ExecuteNonQuery() < 1 Then
+                            oContext.Response.ContentType = "text/plain"
+                            oContext.Response.StatusCode = 434
+                            oContext.Response.Write("Email not found")
+                            ZSSOUtilities.WriteLog("SendPassword : Email not found")
                             Return
-                        End Try
+                        End If
 
-                    End Using
+                        'Select email template
+                        oSqlCmd.CommandText = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name"
+                        oSqlCmd.Parameters.AddWithValue("@template_name", "sendpassword")
 
-                    sQuery = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name"
-                    Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
-                        oSqlCmdSelect.Parameters.AddWithValue("@template_name", "sendpassword")
+                        oTransaction.Commit()
 
-                        Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                        Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
+
                             Dim sTemplate As String = ""
                             Dim sSubject As String = ""
 
@@ -93,11 +94,19 @@ Public Class sendpassword
                                 oHtmlEmail.Send()
                             End If
                         End Using
-                    End Using
+
+                    Catch ex As Exception
+                        ZSSOUtilities.WriteLog("SendPassword : NOK : Rolling back : " & ex.Message)
+                        Try
+                            oSqlCmd.Transaction.Rollback()
+                        Catch
+                            ZSSOUtilities.WriteLog("SendPassword : NOK : Rollback failed : " & ex.Message)
+                        End Try
+                    End Try
                 End Using
+                ZSSOUtilities.WriteLog("SendPassword : OK")
             End If
         End If
-        ZSSOUtilities.WriteLog("SendPassword : OK")
     End Sub
 
     ReadOnly Property IsReusable() As Boolean Implements IHttpHandler.IsReusable
@@ -131,7 +140,7 @@ Public NotInheritable Class Mail
             oMail.Body = sBody
             oSmtpServer.Send(oMail)
         Catch ex As Exception
-            'MsgBox(ex.Message & vbNewLine & ex.StackTrace)
+            ZSSOUtilities.WriteLog("SendPassword : NOK : Mail : " & ex.Message)
         End Try
 
     End Sub

@@ -44,12 +44,12 @@ Public Class createaccount
                     Return
                 End If
 
-                Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
-                    oConnexion.Open()
+                Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                    oConnection.Open()
 
                     Dim sQuery As String = "INSERT INTO Account (Email, Password) VALUES (@email, @password)"
 
-                    Using oSqlCmdInsert As New SqlCommand(sQuery, oConnexion)
+                    Using oSqlCmdInsert As New SqlCommand(sQuery, oConnection)
 
                         Dim sPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
@@ -65,15 +65,15 @@ Public Class createaccount
                                 oContext.Response.Write("Already Exist")
                                 ZSSOUtilities.WriteLog("CreateAccount : Already exist")
                             End If
+                            ZSSOUtilities.WriteLog("CreateAccount : NOK : " & ex.Message)
                             Return
                         End Try
                     End Using
 
                 End Using
-
+                ZSSOUtilities.WriteLog("CreateAccount : OK")
             End If
         End If
-        ZSSOUtilities.WriteLog("CreateAccount : OK")
     End Sub
 
     ReadOnly Property IsReusable() As Boolean Implements IHttpHandler.IsReusable

@@ -44,10 +44,10 @@ Public Class listprinter
                     Return
                 End If
 
-                Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
-                    oConnexion.Open()
+                Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                    oConnection.Open()
 
-                    If Not ZSSOUtilities.Login(oConnexion, sEmail, sPassword) Then
+                    If Not ZSSOUtilities.Login(oConnection, sEmail, sPassword) Then
                         oContext.Response.ContentType = "text/plain"
                         oContext.Response.StatusCode = 434
                         oContext.Response.Write("Login failed")
@@ -60,7 +60,7 @@ Public Class listprinter
                         "INNER JOIN Printer ON [AccountPrinterAssociation].Serial = [Printer].Serial " & _
                         "WHERE [AccountPrinterAssociation].Email = @email AND [AccountPrinterAssociation].Deleted IS NULL"
 
-                    Using oSqlCmdSelect As New SqlCommand(sQuery, oConnexion)
+                    Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
                         oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail)
 
                         Dim arAccountPrinters = New Dictionary(Of String, Dictionary(Of String, String))
@@ -75,13 +75,14 @@ Public Class listprinter
                                     arPrinterData("printername") = oQueryResult(oQueryResult.GetOrdinal("Name"))
                                     arPrinterData("localIP") = arCachedPrinter("local_ip")
                                     arPrinterData("FQDN") = sSerial & "." & arCachedPrinter("server_hostname")
+                                    arPrinterData("token") = arCachedPrinter("token")
                                     arAccountPrinters(sSerial) = arPrinterData
                                     End If
                                 End While
                             End Using
                         oContext.Response.ContentType = "text/plain"
                         oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(arAccountPrinters.Values))
-                        ZSSOUtilities.WriteLog("ListPrinter : OK : " & ZSSOUtilities.oSerializer.Serialize(arAccountPrinters))
+                        ZSSOUtilities.WriteLog("ListPrinter : OK : " & ZSSOUtilities.oSerializer.Serialize(arAccountPrinters.Values))
                         End Using
                 End Using
             End If

@@ -46,10 +46,10 @@ Public Class changepassword
                     Return
                 End If
 
-                Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
-                    oConnexion.Open()
+                Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                    oConnection.Open()
 
-                    If Not ZSSOUtilities.Login(oConnexion, sEmail, sOldPassword) Then
+                    If Not ZSSOUtilities.Login(oConnection, sEmail, sOldPassword) Then
                         oContext.Response.ContentType = "text/plain"
                         oContext.Response.StatusCode = 434
                         oContext.Response.Write("Login failed")
@@ -59,7 +59,7 @@ Public Class changepassword
 
                     Dim sQuery = "UPDATE Account SET Password = @new_password WHERE email=@email"
 
-                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnexion)
+                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnection)
 
                         Dim sNewPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sNewPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
@@ -69,14 +69,15 @@ Public Class changepassword
                         Try
                             oSqlCmdUpdate.ExecuteNonQuery()
                         Catch ex As Exception
+                            ZSSOUtilities.WriteLog("ChangePassword : NOK : " & ex.Message)
                             Return
                         End Try
 
                     End Using
                 End Using
+                ZSSOUtilities.WriteLog("ChangePassword : OK")
             End If
         End If
-        ZSSOUtilities.WriteLog("ChangePassword : OK")
     End Sub
 
     ReadOnly Property IsReusable() As Boolean Implements IHttpHandler.IsReusable

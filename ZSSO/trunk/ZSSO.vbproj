@@ -115,6 +115,24 @@
     <Compile Include="addprinter.ashx.vb">
       <DependentUpon>addprinter.ashx</DependentUpon>
     </Compile>
+    <Compile Include="404.ashx.vb">
+      <DependentUpon>404.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="alive.ashx.vb">
+      <DependentUpon>alive.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="createprinter.ashx.vb">
+      <DependentUpon>createprinter.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="login.ashx.vb">
+      <DependentUpon>login.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="reservemacrange.ashx.vb">
+      <DependentUpon>reservemacrange.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="requestmacrange.ashx.vb">
+      <DependentUpon>requestmacrange.ashx</DependentUpon>
+    </Compile>
     <Compile Include="listrendezvous.ashx.vb">
       <DependentUpon>listrendezvous.ashx</DependentUpon>
     </Compile>
@@ -179,10 +197,18 @@
     <Content Include="listprinter.ashx" />
     <Content Include="sendpassword.ashx" />
     <Content Include="listrendezvous.ashx" />
+    <Content Include="404.ashx" />
+    <Content Include="alive.ashx" />
+    <Content Include="requestmacrange.ashx" />
+    <Content Include="reservemacrange.ashx" />
+    <Content Include="login.ashx" />
+    <Content Include="createprinter.ashx" />
     <None Include="My Project\Application.myapp">
       <Generator>MyApplicationCodeGenerator</Generator>
       <LastGenOutput>Application.Designer.vb</LastGenOutput>
     </None>
+    <None Include="My Project\PublishProfiles\PreprodZSSOProfilAzureDeployment.pubxml" />
+    <None Include="My Project\PublishProfiles\ProdZSSOProfilAzureDeployment.pubxml" />
     <None Include="My Project\PublishProfiles\ZSSOProfilAzureDeployment.pubxml" />
     <None Include="My Project\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
