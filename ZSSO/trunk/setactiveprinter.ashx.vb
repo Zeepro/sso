@@ -70,7 +70,7 @@ Public Class setactiveprinter
                     arSerialData("local_ip") = sIp
                     arSerialData("token") = sToken
                     arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
-                    oHttpCache.Insert("printer_" & sSerial, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
+                    oHttpCache.Insert("printer_" & sSerial.ToUpper, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
                 Else
                     oContext.Response.StatusCode = 436
                     oContext.Response.Write("Unknown printer")
