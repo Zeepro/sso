@@ -69,7 +69,7 @@ Public Class setactiveprinter
                     Dim arSerialData = New Dictionary(Of String, String)
                     arSerialData("local_ip") = sIp
                     arSerialData("token") = sToken
-                    arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName & ".zeepro.com"
+                    arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
                     oHttpCache.Insert("printer_" & sSerial, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
                 Else
                     oContext.Response.StatusCode = 436

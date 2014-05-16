@@ -10,7 +10,7 @@ Imports BCrypt.Net.BCrypt
 Imports System.Net.Cache
 
 Public Class ZSSOUtilities
-    Public Shared oEmailRegex As New Regex("^[_a-z0-9-]+(.[a-z0-9-]+)@[a-z0-9-]+(.[a-z0-9-]+)*(.[a-z]{2,4})$")
+    Public Shared oEmailRegex As New Regex("^[-0-9a-zA-Z.+_]+@[-0-9a-zA-Z.+_]+\.[a-zA-Z]{2,4}$")
     Public Shared oSerializer As New JavaScriptSerializer
     Public Shared oAdminEmail As String = "zeepromac@zeepro.com"
     Public Shared oSerialEmail As String = "zeeproserial@zeepro.com"

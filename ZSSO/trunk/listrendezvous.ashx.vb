@@ -70,7 +70,7 @@ Public Class listrendezvous
             Dim oCacheEnum As IDictionaryEnumerator = oHttpCache.GetEnumerator()
             While oCacheEnum.MoveNext()
                 If oCacheEnum.Current.Key.ToString.StartsWith("rendezvous_server_") Then
-                    arListRdv(oCacheEnum.Current.Value("hostname") & ".zeepro.com") = ZSSOUtilities.CalculateDistanceBetweenCoordinates(oCacheEnum.Current.Value("latitude"), oCacheEnum.Current.Value("longitude"), arPrinterLocationData("latitude"), arPrinterLocationData("longitude"))
+                    arListRdv(oCacheEnum.Current.Value("hostname")) = ZSSOUtilities.CalculateDistanceBetweenCoordinates(oCacheEnum.Current.Value("latitude"), oCacheEnum.Current.Value("longitude"), arPrinterLocationData("latitude"), arPrinterLocationData("longitude"))
                 End If
             End While
 
