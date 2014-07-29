@@ -103,6 +103,7 @@
     <Content Include="App_Data\Database1_log.ldf">
       <DependentUpon>Database1.mdf</DependentUpon>
     </Content>
+    <Content Include="Global.asax" />
     <Content Include="test.html" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
@@ -120,6 +121,27 @@
     </Compile>
     <Compile Include="alive.ashx.vb">
       <DependentUpon>alive.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="changecustomerpassword.ashx.vb">
+      <DependentUpon>changecustomerpassword.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="confirmaccount.ashx.vb">
+      <DependentUpon>confirmaccount.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Global.asax.vb">
+      <DependentUpon>Global.asax</DependentUpon>
+    </Compile>
+    <Compile Include="log.ashx.vb">
+      <DependentUpon>log.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="time.ashx.vb">
+      <DependentUpon>time.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="errorlog.ashx.vb">
+      <DependentUpon>errorlog.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="sendmail.ashx.vb">
+      <DependentUpon>sendmail.ashx</DependentUpon>
     </Compile>
     <Compile Include="createprinter.ashx.vb">
       <DependentUpon>createprinter.ashx</DependentUpon>
@@ -203,6 +225,12 @@
     <Content Include="reservemacrange.ashx" />
     <Content Include="login.ashx" />
     <Content Include="createprinter.ashx" />
+    <Content Include="changecustomerpassword.ashx" />
+    <Content Include="confirmaccount.ashx" />
+    <Content Include="sendmail.ashx" />
+    <Content Include="errorlog.ashx" />
+    <Content Include="time.ashx" />
+    <Content Include="log.ashx" />
     <None Include="My Project\Application.myapp">
       <Generator>MyApplicationCodeGenerator</Generator>
       <LastGenOutput>Application.Designer.vb</LastGenOutput>
@@ -253,8 +281,8 @@
       <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
         <WebProjectProperties>
           <UseIIS>False</UseIIS>
-          <AutoAssignPort>True</AutoAssignPort>
-          <DevelopmentServerPort>6864</DevelopmentServerPort>
+          <AutoAssignPort>False</AutoAssignPort>
+          <DevelopmentServerPort>6871</DevelopmentServerPort>
           <DevelopmentServerVPath>/</DevelopmentServerVPath>
           <IISUrl>http://localhost:1783/</IISUrl>
           <NTLMAuthentication>False</NTLMAuthentication>

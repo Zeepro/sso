@@ -23,7 +23,7 @@ Public Class setrendezvousstatus
                 sBandwidth = HttpUtility.UrlDecode(oContext.Request.Form("bandwidth"))
                 sPercentage = HttpUtility.UrlDecode(oContext.Request.Form("percentage"))
 
-                ZSSOUtilities.WriteLog("SetRDVStatus : " & ZSSOUtilities.oSerializer.Serialize({sBandwidth, sPercentage}))
+                ZSSOUtilities.WriteLog("SetRDVStatus : " & ZSSOUtilities.oSerializer.Serialize({"from : " & Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName, sBandwidth, sPercentage}))
 
                 If String.IsNullOrEmpty(sBandwidth) Or String.IsNullOrEmpty(sPercentage) Then
                     oContext.Response.StatusCode = 432
@@ -37,8 +37,14 @@ Public Class setrendezvousstatus
                 Dim arServerData = New Dictionary(Of String, String)
                 arServerData("bandwidth") = sBandwidth
                 arServerData("percentage") = sPercentage
+                If IsNothing(arLocationData) Then
+                    arLocationData = New Dictionary(Of String, String)
+                    arLocationData("latitude") = "0"
+                    arLocationData("longitude") = "0"
+                End If
                 arServerData("latitude") = arLocationData("latitude")
                 arServerData("longitude") = arLocationData("longitude")
+
                 arServerData("hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
                 'arServerData("hostname") = HttpUtility.UrlDecode(oContext.Request.Form("hostname"))
 

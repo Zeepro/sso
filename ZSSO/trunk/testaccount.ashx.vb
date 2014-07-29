@@ -63,7 +63,7 @@ Public Class testaccount
 
             Dim sQuery = "SELECT TOP 1 Email " & _
                 "FROM Account " & _
-                "WHERE Email=@email"
+                "WHERE Email=@email AND Confirmed=1"
 
             Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
 

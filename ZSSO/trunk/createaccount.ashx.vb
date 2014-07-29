@@ -47,28 +47,61 @@ Public Class createaccount
                 Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                     oConnection.Open()
 
-                    Dim sQuery As String = "INSERT INTO Account (Email, Password) VALUES (@email, @password)"
+                    Dim oSqlCmd As SqlCommand = oConnection.CreateCommand()
+                    Dim oTransaction As SqlTransaction = oConnection.BeginTransaction("createaccount")
 
-                    Using oSqlCmdInsert As New SqlCommand(sQuery, oConnection)
+                    oSqlCmd.Connection = oConnection
+                    oSqlCmd.Transaction = oTransaction
 
-                        Dim sPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sPassword, BCrypt.Net.BCrypt.GenerateSalt())
+                    Dim oRandom As Random = New Random()
+                    Dim iCode As Integer = oRandom.Next(1, 9999)
+                    Dim sPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
-                        oSqlCmdInsert.Parameters.AddWithValue("email", sEmail)
-                        oSqlCmdInsert.Parameters.AddWithValue("password", sPasswordHash)
+                    Try
+                        'Insert new account
+                        oSqlCmd.CommandText = "UPDATE Account SET Password=@password, Code=@code WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code) VALUES (@email, @password, @code)"
+                        oSqlCmd.Parameters.AddWithValue("@email", sEmail)
+                        oSqlCmd.Parameters.AddWithValue("@password", sPasswordHash)
+                        oSqlCmd.Parameters.AddWithValue("@code", iCode)
+                        oSqlCmd.ExecuteNonQuery()
 
-                        Try
-                            oSqlCmdInsert.ExecuteNonQuery()
-                        Catch ex As Exception
-                            If ex.HResult = -2146232060 Then
-                                oContext.Response.ContentType = "text/plain"
-                                oContext.Response.StatusCode = 437
-                                oContext.Response.Write("Already Exist")
-                                ZSSOUtilities.WriteLog("CreateAccount : Already exist")
+                        'Select email template
+                        oSqlCmd.CommandText = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name"
+                        oSqlCmd.Parameters.AddWithValue("@template_name", "createaccount")
+
+                        oTransaction.Commit()
+
+                        'Send email with confirm code
+                        Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
+
+                            Dim sTemplate As String = ""
+                            Dim sSubject As String = ""
+
+                            If oQueryResult.Read() Then
+                                sTemplate = oQueryResult(oQueryResult.GetOrdinal("HtmlTemplate"))
+                                sSubject = oQueryResult(oQueryResult.GetOrdinal("Subject"))
                             End If
-                            ZSSOUtilities.WriteLog("CreateAccount : NOK : " & ex.Message)
-                            Return
-                        End Try
-                    End Using
+
+                            If sTemplate.Length > 0 And sSubject.Length > 0 Then
+                                Dim sHtmlTemplate = String.Format(sTemplate, String.Format("{0:0000}", iCode))
+                                Dim oHtmlEmail As New Mail
+                                oHtmlEmail.sReceiver = sEmail
+                                oHtmlEmail.sSubject = sSubject
+                                oHtmlEmail.sBody = sHtmlTemplate
+                                oHtmlEmail.Send()
+                            End If
+                        End Using
+
+                    Catch ex As Exception
+                        If ex.HResult = -2146232060 Then
+                            oContext.Response.ContentType = "text/plain"
+                            oContext.Response.StatusCode = 437
+                            oContext.Response.Write("Already Exist")
+                            ZSSOUtilities.WriteLog("CreateAccount : Already exist")
+                        End If
+                        ZSSOUtilities.WriteLog("CreateAccount : NOK : " & ex.Message)
+                        Return
+                    End Try
 
                 End Using
                 ZSSOUtilities.WriteLog("CreateAccount : OK")

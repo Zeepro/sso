@@ -20,11 +20,12 @@ Public Class alive
 
                 Try
                     Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
-
                     End Using
                 Catch ex As Exception
                     ZSSOUtilities.WriteLog("Alive : NOK : " & ex.Message)
+                    Return
                 End Try
+
             End Using
         End Using
         oContext.Response.ContentType = "text/plain"

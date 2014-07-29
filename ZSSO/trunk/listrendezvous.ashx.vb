@@ -15,6 +15,12 @@ Public Class listrendezvous
         Dim sToken As String = ""
         Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
         Dim arPrinterLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation(oContext.Request.UserHostAddress)
+
+        If IsNothing(arPrinterLocationData) Then
+            arPrinterLocationData = New Dictionary(Of String, String)
+            arPrinterLocationData("latitude") = "0"
+            arPrinterLocationData("longitude") = "0"
+        End If
         'Dim arPrinterLocationData As Dictionary(Of String, String)
 
         If oContext.Request.HttpMethod = "GET" Then

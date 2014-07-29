@@ -68,12 +68,13 @@ Public Class createprinter
                     Return
                 End If
 
-                Dim sQuery As String = "INSERT INTO Printer (Serial, Manufactured, Type, Ean, Upc, Rangecode) VALUES (@serial, @manufactured, @type, @ean, @upc, @rangecode)"
+                Dim sQuery As String = "INSERT INTO Printer (Serial, Manufactured, Type, Profile, SerialIdentifier, Ean, Upc, Rangecode) VALUES (@serial, @manufactured, @type, @profile, @serialidentifier, @ean, @upc, @rangecode)"
                 Dim arPrinterResult As Dictionary(Of String, String)
 
                 For Each oPrinter In arPrinters
                     If oPrinter.ContainsKey("serialnumber") And oPrinter.ContainsKey("manufactured") _
-                    And oPrinter.ContainsKey("type") And oPrinter.ContainsKey("EAN") _
+                    And oPrinter.ContainsKey("type") And oPrinter.ContainsKey("profile") _
+                    And oPrinter.ContainsKey("hw_version") And oPrinter.ContainsKey("EAN") _
                     And oPrinter.ContainsKey("UPC") And oPrinter.ContainsKey("rangecode") Then
                         arPrinterResult = New Dictionary(Of String, String)
                         arPrinterResult("serialnumber") = oPrinter("serialnumber")
@@ -90,6 +91,8 @@ Public Class createprinter
                                 oSqlCmdInsert.Parameters.AddWithValue("@serial", oPrinter("serialnumber"))
                                 oSqlCmdInsert.Parameters.AddWithValue("@manufactured", DateTime.Parse(oPrinter("manufactured")))
                                 oSqlCmdInsert.Parameters.AddWithValue("@type", oPrinter("type"))
+                                oSqlCmdInsert.Parameters.AddWithValue("@profile", oPrinter("profile"))
+                                oSqlCmdInsert.Parameters.AddWithValue("@serialidentifier", oPrinter("hw_version"))
                                 oSqlCmdInsert.Parameters.AddWithValue("@ean", oPrinter("EAN"))
                                 oSqlCmdInsert.Parameters.AddWithValue("@upc", oPrinter("UPC"))
                                 oSqlCmdInsert.Parameters.AddWithValue("@rangecode", oPrinter("rangecode"))
@@ -104,6 +107,11 @@ Public Class createprinter
 
                             End Using
                         End If
+                        arResults.Add(arPrinterResult)
+                    ElseIf oPrinter.ContainsKey("serialnumber") Then
+                        arPrinterResult = New Dictionary(Of String, String)
+                        arPrinterResult("serialnumber") = oPrinter("serialnumber")
+                        arPrinterResult("result") = "incorrect parameter"
                         arResults.Add(arPrinterResult)
                     End If
                 Next

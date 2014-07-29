@@ -44,7 +44,10 @@ Public Class sendpassword
                     Return
                 End If
 
+                Dim oRandom As Random = New Random()
+                Dim oRegex As Regex = New Regex("[^a-zA-Z0-9]")
                 sNewPassword = System.Web.Security.Membership.GeneratePassword(8, 0)
+                sNewPassword = oRegex.Replace(sNewPassword, oRandom.Next(1, 9))
                 Dim sPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sNewPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
                 Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
@@ -102,6 +105,7 @@ Public Class sendpassword
                         Catch
                             ZSSOUtilities.WriteLog("SendPassword : NOK : Rollback failed : " & ex.Message)
                         End Try
+                        Return
                     End Try
                 End Using
                 ZSSOUtilities.WriteLog("SendPassword : OK")
@@ -115,33 +119,4 @@ Public Class sendpassword
         End Get
     End Property
 
-End Class
-
-Public NotInheritable Class Mail
-    Public Property sSubject As String
-    Public Property sBody As String
-    Public Property sReceiver As String
-
-    Public Sub Send()
-        Try
-            Dim oSmtpServer As New SmtpClient()
-            Dim oMail As New MailMessage()
-            oSmtpServer.UseDefaultCredentials = False
-            oSmtpServer.Credentials = New Net.NetworkCredential("service-informatique@zee3dcompany.com", "uBXf9JhuFAg7FfeJVAVvkA")
-            oSmtpServer.Port = 587
-            oSmtpServer.EnableSsl = True
-            oSmtpServer.Host = "smtp.mandrillapp.com"
-
-            oMail = New MailMessage()
-            oMail.From = New MailAddress("service-informatique@zee3dcompany.com")
-            oMail.To.Add(sReceiver)
-            oMail.Subject = sSubject
-            oMail.IsBodyHtml = True
-            oMail.Body = sBody
-            oSmtpServer.Send(oMail)
-        Catch ex As Exception
-            ZSSOUtilities.WriteLog("SendPassword : NOK : Mail : " & ex.Message)
-        End Try
-
-    End Sub
 End Class

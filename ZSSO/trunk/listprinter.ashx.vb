@@ -74,7 +74,7 @@ Public Class listprinter
                                     Dim arPrinterData = New Dictionary(Of String, String)
                                     arPrinterData("printername") = oQueryResult(oQueryResult.GetOrdinal("Name"))
                                     arPrinterData("localIP") = arCachedPrinter("local_ip")
-                                    arPrinterData("FQDN") = sSerial & "." & arCachedPrinter("server_hostname")
+                                    arPrinterData("URL") = sSerial & "." & arCachedPrinter("server_hostname") & ":" & arCachedPrinter("port")
                                     arPrinterData("token") = arCachedPrinter("token")
                                     arAccountPrinters(sSerial) = arPrinterData
                                     End If

@@ -14,17 +14,19 @@ Public Class setactiveprinter
         Dim sSerial As String = ""
         Dim sIp As String = ""
         Dim sToken As String = ""
+        Dim sPort As String = ""
         Dim bSerialFound As Boolean = False
         Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setactiveprinter.ashx"" accept-charset=""utf-8"">Serial <input id=""printersn"" name=""printersn"" type=""text"" /><br />Local IP <input id=""localIPaddress"" name=""localIPaddress"" type=""text"" /><br />Token <input id=""token"" name=""token"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setactiveprinter.ashx"" accept-charset=""utf-8"">Serial <input id=""printersn"" name=""printersn"" type=""text"" /><br />Local IP <input id=""localIPaddress"" name=""localIPaddress"" type=""text"" /><br />Token <input id=""token"" name=""token"" type=""text"" /><br />Port <input id=""port"" name=""port"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
         Else
             sSerial = HttpUtility.UrlDecode(oContext.Request.Form("printersn"))
             sIp = HttpUtility.UrlDecode(oContext.Request.Form("localIPaddress"))
             sToken = HttpUtility.UrlDecode(oContext.Request.Form("token"))
-            ZSSOUtilities.WriteLog("SetActivePrinter : " & ZSSOUtilities.oSerializer.Serialize({sSerial, sIp, sToken}))
+            sPort = HttpUtility.UrlDecode(oContext.Request.Form("port"))
+            ZSSOUtilities.WriteLog("SetActivePrinter : " & ZSSOUtilities.oSerializer.Serialize({sSerial, sIp, sToken, sPort}))
 
             If String.IsNullOrEmpty(sSerial) Or String.IsNullOrEmpty(sIp) Or String.IsNullOrEmpty(sToken) Then
                 oContext.Response.StatusCode = 432
@@ -33,8 +35,13 @@ Public Class setactiveprinter
                 Return
             End If
 
+            If String.IsNullOrEmpty(sPort) Then
+                sPort = 80
+            End If
+
             Dim oIpa As IPAddress = Nothing
-            If Not (IPAddress.TryParse(sIp, oIpa)) Then
+            Dim iPort As Integer
+            If Not (IPAddress.TryParse(sIp, oIpa)) Or Not Integer.TryParse(sPort, iPort) Then
                 oContext.Response.StatusCode = 433
                 oContext.Response.Write("Incorrect Parameter")
                 ZSSOUtilities.WriteLog("SetActivePrinter : Incorrect parameter")
@@ -69,6 +76,7 @@ Public Class setactiveprinter
                     Dim arSerialData = New Dictionary(Of String, String)
                     arSerialData("local_ip") = sIp
                     arSerialData("token") = sToken
+                    arSerialData("port") = iPort
                     arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
                     oHttpCache.Insert("printer_" & sSerial.ToUpper, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
                 Else
