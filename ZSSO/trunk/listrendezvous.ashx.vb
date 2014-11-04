@@ -21,12 +21,21 @@ Public Class listrendezvous
             arPrinterLocationData("latitude") = "0"
             arPrinterLocationData("longitude") = "0"
         End If
-        'Dim arPrinterLocationData As Dictionary(Of String, String)
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/listrendezvous.ashx"" accept-charset=""utf-8"">Serial <input id=""serial"" name=""serial"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                    "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                    "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                    "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/listrendezvous.ashx"" accept-charset=""utf-8"">Serial <input id=""serial"" name=""serial"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
         Else
+            'Dim arPrinterLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation("199.188.203.167")
+            'If IsNothing(arPrinterLocationData) Then
+            '    arPrinterLocationData = New Dictionary(Of String, String)
+            '    arPrinterLocationData("latitude") = "0"
+            '    arPrinterLocationData("longitude") = "0"
+            'End If
+
             sSerial = HttpUtility.UrlDecode(oContext.Request.Form("serial"))
 
             '' Code a supprimer lors de la mise en prod (champs a aussi supprimer dans l'html)
@@ -42,35 +51,13 @@ Public Class listrendezvous
                 Return
             End If
 
-            Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
-                oConnection.Open()
-
-                Dim sQuery = "SELECT TOP 1 * " & _
-                    "FROM Printer " & _
-                    "WHERE Serial=@serial"
-
-                Using oSqlCmd As New SqlCommand(sQuery, oConnection)
-
-                    oSqlCmd.Parameters.AddWithValue("@serial", sSerial)
-
-                    Try
-                        Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
-
-                            If Not oQueryResult.HasRows Then
-                                oContext.Response.StatusCode = 436
-                                oContext.Response.Write("Unknown printer")
-                                ZSSOUtilities.WriteLog("ListRDV : Unknown printer")
-                                Return
-                            End If
-                        End Using
-                    Catch ex As Exception
-                        oContext.Response.StatusCode = 436
-                        oContext.Response.Write("Unknown printer")
-                        ZSSOUtilities.WriteLog("ListRDV : Unknown printer")
-                        Return
-                    End Try
-                End Using
-            End Using
+            If ZSSOUtilities.SearchSerial(sSerial) = False Then
+                oContext.Response.ContentType = "text/plain"
+                oContext.Response.StatusCode = 436
+                oContext.Response.Write("Unknown printer")
+                ZSSOUtilities.WriteLog("ListRDV : Unknown printer")
+                Return
+            End If
 
             Dim arListRdv = New Dictionary(Of String, Double)
             Dim oCacheEnum As IDictionaryEnumerator = oHttpCache.GetEnumerator()

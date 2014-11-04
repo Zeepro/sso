@@ -26,7 +26,10 @@ Public Class changecustomerpassword
         Else
             If oContext.Request.HttpMethod = "GET" Then
                 oContext.Response.ContentType = "text/html"
-                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/changecustomerpassword.ashx"" accept-charset=""utf-8"">Admin Email <input id=""admin_email"" name=""admin_email"" type=""text"" /><br />Admin Password <input id=""admin_password"" name=""admin_password"" type=""text"" /><br />Customer Email <input id=""customer_email"" name=""customer_email"" type=""text"" /><br />Customer Password <input id=""customer_password"" name=""customer_password"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                        "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                        "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/changecustomerpassword.ashx"" accept-charset=""utf-8"">Admin Email <input id=""admin_email"" name=""admin_email"" type=""text"" /><br />Admin Password <input id=""admin_password"" name=""admin_password"" type=""text"" /><br />Customer Email <input id=""customer_email"" name=""customer_email"" type=""text"" /><br />Customer Password <input id=""customer_password"" name=""customer_password"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
             Else
                 sAdminEmail = HttpUtility.UrlDecode(oContext.Request.Form("admin_email"))
                 sAdminPassword = HttpUtility.UrlDecode(oContext.Request.Form("admin_password"))
@@ -66,15 +69,10 @@ Public Class changecustomerpassword
 
                         Dim sNewPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sCustomerPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
-                        oSqlCmdUpdate.Parameters.AddWithValue("@email", sCustomerEmail)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@email", sCustomerEmail.ToLower)
                         oSqlCmdUpdate.Parameters.AddWithValue("@new_password", sNewPasswordHash)
 
-                        Try
-                            oSqlCmdUpdate.ExecuteNonQuery()
-                        Catch ex As Exception
-                            ZSSOUtilities.WriteLog("ChangeCustomerPassword : NOK : " & ex.Message)
-                            Return
-                        End Try
+                        oSqlCmdUpdate.ExecuteNonQuery()
 
                     End Using
                 End Using

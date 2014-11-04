@@ -22,7 +22,10 @@ Public Class log
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/log.ashx"" accept-charset=""utf-8"">Serial <input id=""printersn"" name=""printersn"" type=""text"" /><br />version <input id=""version"" name=""version"" type=""text"" /><br />category <input id=""category"" name=""category"" type=""text"" /><br />action <input id=""action"" name=""action"" type=""text"" /><br />label <input id=""label"" name=""label"" type=""text"" /><br />value <input id=""value"" name=""value"" type=""text"" /><br />non-interaction <input id=""non-interaction"" name=""non-interaction"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                    "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                    "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                    "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/log.ashx"" accept-charset=""utf-8"">Serial <input id=""printersn"" name=""printersn"" type=""text"" /><br />version <input id=""version"" name=""version"" type=""text"" /><br />category <input id=""category"" name=""category"" type=""text"" /><br />action <input id=""action"" name=""action"" type=""text"" /><br />label <input id=""label"" name=""label"" type=""text"" /><br />value <input id=""value"" name=""value"" type=""text"" /><br />non-interaction <input id=""non-interaction"" name=""non-interaction"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
         Else
             sSerial = HttpUtility.UrlDecode(oContext.Request.Form("printersn"))
             sVersion = HttpUtility.UrlDecode(oContext.Request.Form("version"))
@@ -96,7 +99,7 @@ Public Class log
 
                 Using oSqlCmdInsert As New SqlCommand(sQuery, oConnection)
 
-                    oSqlCmdInsert.Parameters.AddWithValue("@serial", sSerial)
+                    oSqlCmdInsert.Parameters.AddWithValue("@serial", sSerial.ToUpper)
                     oSqlCmdInsert.Parameters.AddWithValue("@servertime", DateTime.Now)
                     oSqlCmdInsert.Parameters.AddWithValue("@version", sVersion)
                     oSqlCmdInsert.Parameters.AddWithValue("@category", sCategory)
@@ -105,15 +108,7 @@ Public Class log
                     oSqlCmdInsert.Parameters.AddWithValue("@value", sValue)
                     oSqlCmdInsert.Parameters.AddWithValue("@noninteraction", sNonInteraction)
 
-                    Try
-                        oSqlCmdInsert.ExecuteNonQuery()
-                    Catch ex As Exception
-                        oContext.Response.ContentType = "text/plain"
-                        oContext.Response.StatusCode = 433
-                        oContext.Response.Write("Incorrect Parameter")
-                        ZSSOUtilities.WriteLog("Log : NOK : " & ex.Message)
-                        Return
-                    End Try
+                    oSqlCmdInsert.ExecuteNonQuery()
                 End Using
 
             End Using

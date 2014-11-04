@@ -18,13 +18,8 @@ Public Class alive
 
             Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
 
-                Try
-                    Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
-                    End Using
-                Catch ex As Exception
-                    ZSSOUtilities.WriteLog("Alive : NOK : " & ex.Message)
-                    Return
-                End Try
+                Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                End Using
 
             End Using
         End Using

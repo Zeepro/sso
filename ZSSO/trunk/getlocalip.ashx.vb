@@ -1,12 +1,12 @@
 ﻿Imports System.Web
 Imports System.Web.Services
 Imports System.Text.RegularExpressions.Regex
-Imports System.Web.Script.Serialization
 Imports System.Data.SqlClient
+Imports System.Security.Cryptography
 Imports System.Runtime.Caching
 Imports System.IO
 
-Public Class time
+Public Class getlocalip
     Implements System.Web.IHttpHandler
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
@@ -18,43 +18,41 @@ Public Class time
             oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
                                     "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
                                     "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
-                                    "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/time.ashx"" accept-charset=""utf-8"">serial <input id=""printersn"" name=""printersn"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
+                                    "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/getlocalip.ashx"" accept-charset=""utf-8"">Serial <input id=""printersn"" name=""printersn"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
         Else
-            Try
-                Dim iCachedCounterByIp = CInt(oHttpCache("time_" & oContext.Request.UserHostAddress))
-            Catch
-                oContext.Response.ContentType = "text/plain"
-                oContext.Response.StatusCode = 435
-                oContext.Response.Write("Too many requests")
-                ZSSOUtilities.WriteLog("Time : Too many requests")
-                Return
-            End Try
-
-            oHttpCache.Insert("time_" & oContext.Request.UserHostAddress, 1, Nothing, DateTime.Now.AddMinutes(1.0), TimeSpan.Zero)
-
             sSerial = HttpUtility.UrlDecode(oContext.Request.Form("printersn"))
 
-            ZSSOUtilities.WriteLog("Time : " & ZSSOUtilities.oSerializer.Serialize({sSerial}))
-
+            ZSSOUtilities.WriteLog("GetLocalIp : " & ZSSOUtilities.oSerializer.Serialize({sSerial}))
             If String.IsNullOrEmpty(sSerial) Then
-                oContext.Response.ContentType = "text/plain"
                 oContext.Response.StatusCode = 432
                 oContext.Response.Write("Missing parameter")
-                ZSSOUtilities.WriteLog("Time : Missing parameter")
+                ZSSOUtilities.WriteLog("GetLocalIp : Missing parameter")
                 Return
             End If
 
-            If Not ZSSOUtilities.SearchSerial(sSerial) Then
+            If sSerial.Length <> 12 Then
                 oContext.Response.ContentType = "text/plain"
                 oContext.Response.StatusCode = 433
                 oContext.Response.Write("Incorrect Parameter")
-                ZSSOUtilities.WriteLog("Time : Incorrect parameter")
+                ZSSOUtilities.WriteLog("GetLocalIp : Incorrect parameter")
                 Return
             End If
 
-            oContext.Response.ContentType = "text/plain"
-            oContext.Response.Write(DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture))
-            ZSSOUtilities.WriteLog("Time : OK")
+            Dim arReturn As Dictionary(Of String, String) = New Dictionary(Of String, String)
+
+            Dim arCachedPrinter = TryCast(oHttpCache("printer_" & sSerial.ToUpper), Dictionary(Of String, String))
+            If Not IsNothing(arCachedPrinter) Then
+                arReturn("localIP") = arCachedPrinter("local_ip")
+                arReturn("state") = "ok"
+            Else
+                arReturn("localIP") = ""
+                arReturn("state") = "unknown"
+            End If
+
+            oContext.Response.AddHeader("Access-Control-Allow-Origin", "*")
+            oContext.Response.ContentType = "application/json"
+            oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(arReturn))
+            ZSSOUtilities.WriteLog("GetLocalIp : OK : " + ZSSOUtilities.oSerializer.Serialize(arReturn))
         End If
     End Sub
 

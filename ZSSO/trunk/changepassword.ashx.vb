@@ -24,7 +24,10 @@ Public Class changepassword
         Else
             If oContext.Request.HttpMethod = "GET" Then
                 oContext.Response.ContentType = "text/html"
-                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/changepassword.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />old password <input id=""old_password"" name=""old_password"" type=""text"" /><br />new password <input id=""new_password"" name=""new_password"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                        "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                        "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/changepassword.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />old password <input id=""old_password"" name=""old_password"" type=""text"" /><br />new password <input id=""new_password"" name=""new_password"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
             Else
                 sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
                 sOldPassword = HttpUtility.UrlDecode(oContext.Request.Form("old_password"))
@@ -63,15 +66,10 @@ Public Class changepassword
 
                         Dim sNewPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sNewPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
-                        oSqlCmdUpdate.Parameters.AddWithValue("@email", sEmail)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@email", sEmail.ToLower)
                         oSqlCmdUpdate.Parameters.AddWithValue("@new_password", sNewPasswordHash)
 
-                        Try
-                            oSqlCmdUpdate.ExecuteNonQuery()
-                        Catch ex As Exception
-                            ZSSOUtilities.WriteLog("ChangePassword : NOK : " & ex.Message)
-                            Return
-                        End Try
+                        oSqlCmdUpdate.ExecuteNonQuery()
 
                     End Using
                 End Using

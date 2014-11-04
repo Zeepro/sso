@@ -25,7 +25,7 @@ Public Class ZSSOUtilities
             "WHERE Email=@email AND Deleted IS NULL"
 
         Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
-            oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail)
+            oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail.ToLower)
             Try
                 Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
                     If oQueryResult.Read() Then
@@ -54,6 +54,17 @@ Public Class ZSSOUtilities
                 Catch ex As Exception
                 End Try
             End Using
+
+            sQuery = "DELETE FROM Logs WHERE LogDate <= @threemonth"
+
+            Using oSqlCmdDelete As New SqlCommand(sQuery, oConnection)
+                Try
+                    oSqlCmdDelete.Parameters.AddWithValue("@threemonth", Date.Today.AddMonths(-3))
+                    oSqlCmdDelete.ExecuteNonQuery()
+                Catch ex As Exception
+                End Try
+            End Using
+
         End Using
         Return Nothing
     End Function
@@ -78,11 +89,13 @@ Public Class ZSSOUtilities
         Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
 
         Try
-            Dim oRequest As WebRequest = WebRequest.Create("https://freegeoip.net/json/" & sIp)
+            Dim oRequest As WebRequest = WebRequest.Create("http://ip-api.com/json/" & sIp)
             Using oResponseStream As Stream = oRequest.GetResponse().GetResponseStream()
                 Dim sResponse As String = New StreamReader(oResponseStream).ReadToEnd()
-
-                arLocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
+                Dim arData As Dictionary(Of String, String) = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
+                arLocationData = New Dictionary(Of String, String)
+                arLocationData("latitude") = arData("lat")
+                arLocationData("longitude") = arData("lon")
             End Using
             Return arLocationData
         Catch ex As Exception
@@ -90,19 +103,17 @@ Public Class ZSSOUtilities
                 Dim oHtmlEmail As New Mail
                 oHtmlEmail.sReceiver = "julien.nguyen@zeepro.fr"
                 oHtmlEmail.sSubject = "[SSO] Location Service 1 is down"
-                oHtmlEmail.sBody = "The Location service1 (https://freegeoip.net/json/" & sIp & ") is down. Please check the logs."
+                oHtmlEmail.sBody = "The Location service1 (http://ip-api.com/json/" & sIp & ") is down. Please check the logs."
                 oHtmlEmail.Send()
                 oHttpCache.Insert("getlocation_service1", "Service1 is down", Nothing, DateTime.Now.AddMinutes(60.0), TimeSpan.Zero)
             End If
             ZSSOUtilities.WriteLog("GetLocation : NOK (service1) : " & ex.Message)
             Try
-                Dim oRequest As WebRequest = WebRequest.Create("http://ip-api.com/json/" & sIp)
+                Dim oRequest As WebRequest = WebRequest.Create("https://freegeoip.net/json/" & sIp)
                 Using oResponseStream As Stream = oRequest.GetResponse().GetResponseStream()
                     Dim sResponse As String = New StreamReader(oResponseStream).ReadToEnd()
-                    Dim arData As Dictionary(Of String, String) = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
-                    arLocationData = New Dictionary(Of String, String)
-                    arLocationData("latitude") = arData("lat")
-                    arLocationData("longitude") = arData("lon")
+
+                    arLocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
                 End Using
                 Return arLocationData
             Catch ex2 As Exception
@@ -110,21 +121,29 @@ Public Class ZSSOUtilities
                     Dim oHtmlEmail As New Mail
                     oHtmlEmail.sReceiver = "julien.nguyen@zeepro.fr"
                     oHtmlEmail.sSubject = "[SSO] Location Service 2 is down"
-                    oHtmlEmail.sBody = "The Location service2 (http://ip-api.com/json/" & sIp & ") is down. Please check the logs."
+                    oHtmlEmail.sBody = "The Location service2 (https://freegeoip.net/json/" & sIp & ") is down. Please check the logs."
                     oHtmlEmail.Send()
                     oHttpCache.Insert("getlocation_service2", "Service2 is down", Nothing, DateTime.Now.AddMinutes(60.0), TimeSpan.Zero)
                 End If
                 ZSSOUtilities.WriteLog("GetLocation : NOK (service2) : " & ex2.Message)
-                'Try
-                '    Dim oRequest As WebRequest = WebRequest.Create("http://www.telize.com/geoip/" & sIp)
-                '    Using oResponseStream As Stream = oRequest.GetResponse().GetResponseStream()
-                '        Dim sResponse As String = New StreamReader(oResponseStream).ReadToEnd()
-                '        arLocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
-                '    End Using
-                '    Return arLocationData
-                'Catch ex3 As Exception
-                '    ZSSOUtilities.WriteLog("GetLocation : NOK : " & ex3.Message)
-                'End Try
+                Try
+                    Dim oRequest As WebRequest = WebRequest.Create("http://www.telize.com/geoip/" & sIp)
+                    Using oResponseStream As Stream = oRequest.GetResponse().GetResponseStream()
+                        Dim sResponse As String = New StreamReader(oResponseStream).ReadToEnd()
+                        arLocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
+                    End Using
+                    Return arLocationData
+                Catch ex3 As Exception
+                    If IsNothing(oHttpCache.Get("getlocation_service3")) Then
+                        Dim oHtmlEmail As New Mail
+                        oHtmlEmail.sReceiver = "julien.nguyen@zeepro.fr"
+                        oHtmlEmail.sSubject = "[SSO] Location Service 3 is down"
+                        oHtmlEmail.sBody = "The Location service3 (http://www.telize.com/geoip/" & sIp & ") is down. Please check the logs."
+                        oHtmlEmail.Send()
+                        oHttpCache.Insert("getlocation_service3", "Service3 is down", Nothing, DateTime.Now.AddMinutes(60.0), TimeSpan.Zero)
+                    End If
+                    ZSSOUtilities.WriteLog("GetLocation : NOK (service3) : " & ex3.Message)
+                End Try
             End Try
         End Try
         Return Nothing
@@ -216,7 +235,7 @@ Public Class ZSSOUtilities
 
             Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
 
-                oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial)
+                oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial.ToUpper)
 
                 Try
                     Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
@@ -226,7 +245,6 @@ Public Class ZSSOUtilities
                         End If
                     End Using
                 Catch ex As Exception
-                    ZSSOUtilities.WriteLog("CreatePrinters : NOK : " & ex.Message)
                 End Try
             End Using
         End Using
@@ -240,25 +258,21 @@ Public NotInheritable Class Mail
     Public Property sReceiver As String
 
     Public Sub Send()
-        Try
-            Dim oSmtpServer As New SmtpClient()
-            Dim oMail As New MailMessage()
-            oSmtpServer.UseDefaultCredentials = False
-            oSmtpServer.Credentials = New Net.NetworkCredential("service-informatique@zee3dcompany.com", "uBXf9JhuFAg7FfeJVAVvkA")
-            oSmtpServer.Port = 587
-            oSmtpServer.EnableSsl = True
-            oSmtpServer.Host = "smtp.mandrillapp.com"
+        Dim oSmtpServer As New SmtpClient()
+        Dim oMail As New MailMessage()
+        oSmtpServer.UseDefaultCredentials = False
+        oSmtpServer.Credentials = New Net.NetworkCredential("service-informatique@zee3dcompany.com", "uBXf9JhuFAg7FfeJVAVvkA")
+        oSmtpServer.Port = 587
+        oSmtpServer.EnableSsl = True
+        oSmtpServer.Host = "smtp.mandrillapp.com"
 
-            oMail = New MailMessage()
-            oMail.From = New MailAddress("service-informatique@zee3dcompany.com")
-            oMail.To.Add(sReceiver)
-            oMail.Subject = sSubject
-            oMail.IsBodyHtml = True
-            oMail.Body = sBody
-            oSmtpServer.Send(oMail)
-        Catch ex As Exception
-            ZSSOUtilities.WriteLog("Send Email : NOK : " & ex.Message)
-        End Try
+        oMail = New MailMessage()
+        oMail.From = New MailAddress("zim@zeepro.com")
+        oMail.To.Add(sReceiver)
+        oMail.Subject = sSubject
+        oMail.IsBodyHtml = True
+        oMail.Body = sBody
+        oSmtpServer.Send(oMail)
 
     End Sub
 End Class

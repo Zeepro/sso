@@ -23,7 +23,10 @@ Public Class requestmacrange
         Else
             If oContext.Request.HttpMethod = "GET" Then
                 oContext.Response.ContentType = "text/html"
-                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/requestmacrange.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br />range <input id=""rangesize"" name=""rangesize"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                        "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                        "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/requestmacrange.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br />range <input id=""rangesize"" name=""rangesize"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
             Else
                 sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
                 sPassword = HttpUtility.UrlDecode(oContext.Request.Form("password"))
@@ -56,15 +59,10 @@ Public Class requestmacrange
                         Return
                     End If
 
-                    Try
-                        Dim sRangeStart As String = ZSSOUtilities.GetRangeStart(oConnection)
-                        Dim sRangeEnd As String = Hex(CLng("&H" & sRangeStart) + (sRange - 1))
-                        oContext.Response.ContentType = "text/plain"
-                        oContext.Response.Write(ZSSOUtilities.GenerateRangeCode(sRangeStart, sRangeEnd))
-                    Catch ex As Exception
-                        ZSSOUtilities.WriteLog("RequestMacRange : NOK : " & ex.Message)
-                        Return
-                    End Try
+                    Dim sRangeStart As String = ZSSOUtilities.GetRangeStart(oConnection)
+                    Dim sRangeEnd As String = Hex(CLng("&H" & sRangeStart) + (sRange - 1))
+                    oContext.Response.ContentType = "text/plain"
+                    oContext.Response.Write(ZSSOUtilities.GenerateRangeCode(sRangeStart, sRangeEnd))
                 End Using
                 ZSSOUtilities.WriteLog("RequestMacRange : OK")
             End If

@@ -36,7 +36,7 @@ Public Class Global_asax
         ZSSOUtilities.WriteLog(sender.Context.Handler.ToString & " : NOK : " & oCaughtException.Message)
         Try
             Dim oHtmlEmail As New Mail
-            oHtmlEmail.sReceiver = "julien.nguyen@zeepro.fr"
+            oHtmlEmail.sReceiver = "iterr@zeepro.com"
             oHtmlEmail.sSubject = "Une erreur est survenue"
             oHtmlEmail.sBody = String.Format(sEmailError, sender.Context.Handler.ToString, oCaughtException.Message)
             oHtmlEmail.Send()

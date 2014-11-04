@@ -20,7 +20,10 @@ Public Class setactiveprinter
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/setactiveprinter.ashx"" accept-charset=""utf-8"">Serial <input id=""printersn"" name=""printersn"" type=""text"" /><br />Local IP <input id=""localIPaddress"" name=""localIPaddress"" type=""text"" /><br />Token <input id=""token"" name=""token"" type=""text"" /><br />Port <input id=""port"" name=""port"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                    "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                    "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                    "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/setactiveprinter.ashx"" accept-charset=""utf-8"">Serial <input id=""printersn"" name=""printersn"" type=""text"" /><br />Local IP <input id=""localIPaddress"" name=""localIPaddress"" type=""text"" /><br />Token <input id=""token"" name=""token"" type=""text"" /><br />Port <input id=""port"" name=""port"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
         Else
             sSerial = HttpUtility.UrlDecode(oContext.Request.Form("printersn"))
             sIp = HttpUtility.UrlDecode(oContext.Request.Form("localIPaddress"))
@@ -36,7 +39,7 @@ Public Class setactiveprinter
             End If
 
             If String.IsNullOrEmpty(sPort) Then
-                sPort = 80
+                sPort = 443
             End If
 
             Dim oIpa As IPAddress = Nothing
@@ -57,7 +60,7 @@ Public Class setactiveprinter
 
                 Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
 
-                    oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial)
+                    oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial.ToUpper)
 
                     Try
                         Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
@@ -71,26 +74,25 @@ Public Class setactiveprinter
                 End Using
 
             End Using
-            Try
-                If bSerialFound Then
-                    Dim arSerialData = New Dictionary(Of String, String)
-                    arSerialData("local_ip") = sIp
-                    arSerialData("token") = sToken
-                    arSerialData("port") = iPort
+            Dim arSerialData = New Dictionary(Of String, String)
+            If bSerialFound Then
+                arSerialData("local_ip") = sIp
+                arSerialData("token") = sToken
+                arSerialData("port") = iPort
+                Try
                     arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
-                    oHttpCache.Insert("printer_" & sSerial.ToUpper, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
-                Else
-                    oContext.Response.StatusCode = 436
-                    oContext.Response.Write("Unknown printer")
-                    ZSSOUtilities.WriteLog("SetActivePrinter : Unknown printer")
-                    Return
-                End If
-            Catch ex As Exception
-                ZSSOUtilities.WriteLog("SetActivePrinter : NOK : " & ex.Message)
+                Catch ex As Exception
+                    arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
+                End Try
+                oHttpCache.Insert("printer_" & sSerial.ToUpper, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
+            Else
+                oContext.Response.StatusCode = 436
+                oContext.Response.Write("Unknown printer")
+                ZSSOUtilities.WriteLog("SetActivePrinter : Unknown printer")
                 Return
-            End Try
+            End If
 
-            ZSSOUtilities.WriteLog("SetActivePrinter : OK")
+            ZSSOUtilities.WriteLog("SetActivePrinter : OK : " & ZSSOUtilities.oSerializer.Serialize(arSerialData))
         End If
     End Sub
 

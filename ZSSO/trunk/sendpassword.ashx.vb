@@ -53,6 +53,40 @@ Public Class sendpassword
                 Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                     oConnection.Open()
 
+                    'Get account language (english by default)
+                    Dim sQuery = "SELECT TOP 1 * " & _
+                                "FROM Account " & _
+                                "WHERE Email=@email AND Deleted IS NULL"
+
+                    Dim sLanguage As String = "en"
+                    Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
+                        oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail.ToLower)
+                        Try
+                            Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                                If oQueryResult.Read() Then
+                                    sLanguage = oQueryResult(oQueryResult.GetOrdinal("Language"))
+                                End If
+                            End Using
+                        Catch
+                        End Try
+                    End Using
+
+                    'Check email template language
+                    sQuery = "SELECT TOP 1 * FROM EmailTemplate WHERE Name = @template_name AND Language = @language"
+
+                    Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
+                        oSqlCmdSelect.Parameters.AddWithValue("@template_name", "sendpassword")
+                        oSqlCmdSelect.Parameters.AddWithValue("@language", sLanguage.ToLower)
+                        Try
+                            Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                                If oQueryResult.HasRows = False Then
+                                    sLanguage = "en"
+                                End If
+                            End Using
+                        Catch
+                        End Try
+                    End Using
+
                     Dim oSqlCmd As SqlCommand = oConnection.CreateCommand()
                     Dim oTransaction As SqlTransaction = oConnection.BeginTransaction("sendpassword")
 
@@ -62,7 +96,7 @@ Public Class sendpassword
                     Try
                         'Update new password
                         oSqlCmd.CommandText = "UPDATE Account SET Password = @new_password WHERE email=@email AND Deleted IS NULL"
-                        oSqlCmd.Parameters.AddWithValue("@email", sEmail)
+                        oSqlCmd.Parameters.AddWithValue("@email", sEmail.ToLower)
                         oSqlCmd.Parameters.AddWithValue("@new_password", sPasswordHash)
                         If oSqlCmd.ExecuteNonQuery() < 1 Then
                             oContext.Response.ContentType = "text/plain"
@@ -73,7 +107,8 @@ Public Class sendpassword
                         End If
 
                         'Select email template
-                        oSqlCmd.CommandText = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name"
+                        oSqlCmd.CommandText = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name AND Language = @language"
+                        oSqlCmd.Parameters.AddWithValue("@language", sLanguage.ToLower)
                         oSqlCmd.Parameters.AddWithValue("@template_name", "sendpassword")
 
                         oTransaction.Commit()
@@ -99,12 +134,8 @@ Public Class sendpassword
                         End Using
 
                     Catch ex As Exception
-                        ZSSOUtilities.WriteLog("SendPassword : NOK : Rolling back : " & ex.Message)
-                        Try
-                            oSqlCmd.Transaction.Rollback()
-                        Catch
-                            ZSSOUtilities.WriteLog("SendPassword : NOK : Rollback failed : " & ex.Message)
-                        End Try
+                        oSqlCmd.Transaction.Rollback()
+                        Throw ex
                         Return
                     End Try
                 End Using

@@ -23,7 +23,10 @@ Public Class confirmaccount
         Else
             If oContext.Request.HttpMethod = "GET" Then
                 oContext.Response.ContentType = "text/html"
-                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/confirmaccount.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />code <input id=""code"" name=""code"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                        "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                        "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/confirmaccount.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />code <input id=""code"" name=""code"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
             Else
                 sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
                 sCode = HttpUtility.UrlDecode(oContext.Request.Form("code"))
@@ -55,27 +58,22 @@ Public Class confirmaccount
 
                     'Check account status and get confirm code
                     Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
-                        oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail)
+                        oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail.ToLower)
 
-                        Try
-                            Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
-                                If oQueryResult.Read() Then
-                                    Dim bConfirmed As Boolean = oQueryResult(oQueryResult.GetOrdinal("Confirmed"))
-                                    If bConfirmed Then
-                                        oContext.Response.ContentType = "text/plain"
-                                        oContext.Response.StatusCode = 437
-                                        oContext.Response.Write("Already exist")
-                                        ZSSOUtilities.WriteLog("ConfirmAccount : Already exist (confirmed)")
-                                        Return
-                                    Else
-                                        iCodeAccount = oQueryResult(oQueryResult.GetOrdinal("Code"))
-                                    End If
+                        Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                            If oQueryResult.Read() Then
+                                Dim bConfirmed As Boolean = oQueryResult(oQueryResult.GetOrdinal("Confirmed"))
+                                If bConfirmed Then
+                                    oContext.Response.ContentType = "text/plain"
+                                    oContext.Response.StatusCode = 437
+                                    oContext.Response.Write("Already exist")
+                                    ZSSOUtilities.WriteLog("ConfirmAccount : Already exist (confirmed)")
+                                    Return
+                                Else
+                                    iCodeAccount = oQueryResult(oQueryResult.GetOrdinal("Code"))
                                 End If
-                            End Using
-                        Catch ex As Exception
-                            ZSSOUtilities.WriteLog("ConfirmAccount : NOK : " & ex.Message)
-                            Return
-                        End Try
+                            End If
+                        End Using
 
                     End Using
 
@@ -103,12 +101,8 @@ Public Class confirmaccount
                     sQuery = "UPDATE Account SET Confirmed=1 WHERE Email=@email"
 
                     Using oSqlCmUpdate As New SqlCommand(sQuery, oConnection)
-                        oSqlCmUpdate.Parameters.AddWithValue("@email", sEmail)
-                        Try
+                        oSqlCmUpdate.Parameters.AddWithValue("@email", sEmail.ToLower)
                             oSqlCmUpdate.ExecuteNonQuery()
-                        Catch ex As Exception
-                            ZSSOUtilities.WriteLog("ConfirmAccount : NOK : " & ex.Message)
-                        End Try
 
                     End Using
                 End Using

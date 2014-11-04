@@ -24,7 +24,10 @@ Public Class createprinter
         'Else
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/createprinter.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br />Printers <input id=""printers"" name=""printers"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                    "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                    "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                    "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/createprinter.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br />Printers <input id=""printers"" name=""printers"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
         Else
             sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
             sPassword = HttpUtility.UrlDecode(oContext.Request.Form("password"))
@@ -72,48 +75,51 @@ Public Class createprinter
                 Dim arPrinterResult As Dictionary(Of String, String)
 
                 For Each oPrinter In arPrinters
-                    If oPrinter.ContainsKey("serialnumber") And oPrinter.ContainsKey("manufactured") _
-                    And oPrinter.ContainsKey("type") And oPrinter.ContainsKey("profile") _
-                    And oPrinter.ContainsKey("hw_version") And oPrinter.ContainsKey("EAN") _
-                    And oPrinter.ContainsKey("UPC") And oPrinter.ContainsKey("rangecode") Then
-                        arPrinterResult = New Dictionary(Of String, String)
-                        arPrinterResult("serialnumber") = oPrinter("serialnumber")
-                        If (ZSSOUtilities.CheckRangeCode(oPrinter("rangecode")) = False) Then
-                            arPrinterResult("result") = "unavailable range"
-                        ElseIf (CLng("&H" & oPrinter("serialnumber")) < CLng("&H" & oPrinter("rangecode").Substring(0, 12))) Or (CLng("&H" & oPrinter("serialnumber")) > CLng("&H" & oPrinter("rangecode").Substring(12, 12))) Then
-                            arPrinterResult("result") = "incorrect MAC"
-                        ElseIf ZSSOUtilities.SearchSerial(oPrinter("serialnumber")) = True Then
-                            arPrinterResult("result") = "already exist"
-                        ElseIf String.Compare(oPrinter("rangecode"), "testrange") = 0 Then
-                            arPrinterResult("result") = "test"
-                        Else
-                            Using oSqlCmdInsert As New SqlCommand(sQuery, oConnection)
-                                oSqlCmdInsert.Parameters.AddWithValue("@serial", oPrinter("serialnumber"))
-                                oSqlCmdInsert.Parameters.AddWithValue("@manufactured", DateTime.Parse(oPrinter("manufactured")))
-                                oSqlCmdInsert.Parameters.AddWithValue("@type", oPrinter("type"))
-                                oSqlCmdInsert.Parameters.AddWithValue("@profile", oPrinter("profile"))
-                                oSqlCmdInsert.Parameters.AddWithValue("@serialidentifier", oPrinter("hw_version"))
-                                oSqlCmdInsert.Parameters.AddWithValue("@ean", oPrinter("EAN"))
-                                oSqlCmdInsert.Parameters.AddWithValue("@upc", oPrinter("UPC"))
-                                oSqlCmdInsert.Parameters.AddWithValue("@rangecode", oPrinter("rangecode"))
+                    Try
+                        If oPrinter.ContainsKey("serialnumber") And oPrinter.ContainsKey("manufactured") _
+                        And oPrinter.ContainsKey("type") And oPrinter.ContainsKey("profile") _
+                        And oPrinter.ContainsKey("hw_version") And oPrinter.ContainsKey("EAN") _
+                        And oPrinter.ContainsKey("UPC") And oPrinter.ContainsKey("rangecode") Then
+                            arPrinterResult = New Dictionary(Of String, String)
+                            arPrinterResult("serialnumber") = oPrinter("serialnumber")
+                            If (ZSSOUtilities.CheckRangeCode(oPrinter("rangecode")) = False) Then
+                                arPrinterResult("result") = "unavailable range"
+                            ElseIf (CLng("&H" & oPrinter("serialnumber")) < CLng("&H" & oPrinter("rangecode").Substring(0, 12))) Or (CLng("&H" & oPrinter("serialnumber")) > CLng("&H" & oPrinter("rangecode").Substring(12, 12))) Then
+                                arPrinterResult("result") = "incorrect MAC"
+                            ElseIf ZSSOUtilities.SearchSerial(oPrinter("serialnumber")) = True Then
+                                arPrinterResult("result") = "already exist"
+                            ElseIf String.Compare(oPrinter("rangecode"), "testrange") = 0 Then
+                                arPrinterResult("result") = "test"
+                            Else
+                                Using oSqlCmdInsert As New SqlCommand(sQuery, oConnection)
+                                    oSqlCmdInsert.Parameters.AddWithValue("@serial", oPrinter("serialnumber").ToUpper)
+                                    oSqlCmdInsert.Parameters.AddWithValue("@manufactured", DateTime.Parse(oPrinter("manufactured")))
+                                    oSqlCmdInsert.Parameters.AddWithValue("@type", oPrinter("type"))
+                                    oSqlCmdInsert.Parameters.AddWithValue("@profile", oPrinter("profile"))
+                                    oSqlCmdInsert.Parameters.AddWithValue("@serialidentifier", oPrinter("hw_version"))
+                                    oSqlCmdInsert.Parameters.AddWithValue("@ean", oPrinter("EAN"))
+                                    oSqlCmdInsert.Parameters.AddWithValue("@upc", oPrinter("UPC"))
+                                    oSqlCmdInsert.Parameters.AddWithValue("@rangecode", oPrinter("rangecode"))
 
-                                Try
                                     oSqlCmdInsert.ExecuteNonQuery()
                                     arPrinterResult("result") = "ok"
-                                Catch ex As Exception
-                                    ZSSOUtilities.WriteLog("CreatePrinter : NOK : " & ex.Message)
-                                    arPrinterResult("result") = "incorrect parameter"
-                                End Try
 
-                            End Using
+                                End Using
+                            End If
+                            arResults.Add(arPrinterResult)
+                        ElseIf oPrinter.ContainsKey("serialnumber") Then
+                            arPrinterResult = New Dictionary(Of String, String)
+                            arPrinterResult("serialnumber") = oPrinter("serialnumber")
+                            arPrinterResult("result") = "incorrect parameter"
+                            arResults.Add(arPrinterResult)
                         End If
-                        arResults.Add(arPrinterResult)
-                    ElseIf oPrinter.ContainsKey("serialnumber") Then
+                    Catch ex As Exception
+                        ZSSOUtilities.WriteLog("CreatePrinter : NOK : " & ex.Message)
                         arPrinterResult = New Dictionary(Of String, String)
                         arPrinterResult("serialnumber") = oPrinter("serialnumber")
                         arPrinterResult("result") = "incorrect parameter"
                         arResults.Add(arPrinterResult)
-                    End If
+                    End Try
                 Next
 
             End Using

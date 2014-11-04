@@ -20,7 +20,10 @@ Public Class sendmail
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
-            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/sendmail.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br />address <input id=""address"" name=""address"" type=""text"" /><br />subject <input id=""subject"" name=""subject"" type=""text"" /><br />htmlbody <input id=""htmlbody"" name=""htmlbody"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+            oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                    "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                    "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                    "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/sendmail.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br />address <input id=""address"" name=""address"" type=""text"" /><br />subject <input id=""subject"" name=""subject"" type=""text"" /><br />htmlbody <input id=""htmlbody"" name=""htmlbody"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
         Else
             Try
                 iCachedCounterByIp = CInt(oHttpCache("sendmail_" & oContext.Request.UserHostAddress))
@@ -75,16 +78,11 @@ Public Class sendmail
                 End If
             End Using
 
-            Try
-                Dim oHtmlEmail As New Mail
-                oHtmlEmail.sReceiver = sAddress
-                oHtmlEmail.sSubject = sSubject
-                oHtmlEmail.sBody = sHtmlbody
-                oHtmlEmail.Send()
-            Catch ex As Exception
-                ZSSOUtilities.WriteLog("SendMail : NOK : " & ex.Message)
-                Return
-            End Try
+            Dim oHtmlEmail As New Mail
+            oHtmlEmail.sReceiver = sAddress
+            oHtmlEmail.sSubject = sSubject
+            oHtmlEmail.sBody = sHtmlbody
+            oHtmlEmail.Send()
             ZSSOUtilities.WriteLog("SendMail : OK")
         End If
     End Sub

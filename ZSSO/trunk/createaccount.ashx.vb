@@ -13,6 +13,7 @@ Public Class createaccount
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
         Dim sEmail As String
         Dim sPassword As String
+        Dim sLanguage As String = "en"
 
         If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "createaccount") > 5 Then
             oContext.Response.ContentType = "text/plain"
@@ -23,10 +24,16 @@ Public Class createaccount
         Else
             If oContext.Request.HttpMethod = "GET" Then
                 oContext.Response.ContentType = "text/html"
-                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title></head><body><form  method=""post"" action=""/createaccount.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br /><input id=""Submit1"" type=""submit"" value=""Ok"" /></form></body></html>")
+                oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
+                                        "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
+                                        "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
+                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/createaccount.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br />language <input id=""language"" name=""language"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
             Else
                 sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
                 sPassword = HttpUtility.UrlDecode(oContext.Request.Form("password"))
+                If String.IsNullOrEmpty(oContext.Request.Form("language")) = False Then
+                    sLanguage = HttpUtility.UrlDecode(oContext.Request.Form("language"))
+                End If
 
                 ZSSOUtilities.WriteLog("CreateAccount : " & ZSSOUtilities.oSerializer.Serialize({sEmail}))
                 If String.IsNullOrEmpty(sEmail) Or String.IsNullOrEmpty(sPassword) Then
@@ -44,8 +51,32 @@ Public Class createaccount
                     Return
                 End If
 
+                If testaccount.SearchEmail(sEmail) Then
+                    oContext.Response.ContentType = "text/plain"
+                    oContext.Response.StatusCode = 437
+                    oContext.Response.Write("Already Exist")
+                    ZSSOUtilities.WriteLog("CreateAccount : Already exist")
+                    Return
+                End If
+
                 Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                     oConnection.Open()
+
+                    'Check email template language
+                    Dim sQuery = "SELECT TOP 1 * FROM EmailTemplate WHERE Name = @template_name AND Language = @language"
+
+                    Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
+                        oSqlCmdSelect.Parameters.AddWithValue("@template_name", "createaccount")
+                        oSqlCmdSelect.Parameters.AddWithValue("@language", sLanguage.ToLower)
+                        Try
+                            Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                                If oQueryResult.HasRows = False Then
+                                    sLanguage = "en"
+                                End If
+                            End Using
+                        Catch
+                        End Try
+                    End Using
 
                     Dim oSqlCmd As SqlCommand = oConnection.CreateCommand()
                     Dim oTransaction As SqlTransaction = oConnection.BeginTransaction("createaccount")
@@ -59,14 +90,15 @@ Public Class createaccount
 
                     Try
                         'Insert new account
-                        oSqlCmd.CommandText = "UPDATE Account SET Password=@password, Code=@code WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code) VALUES (@email, @password, @code)"
-                        oSqlCmd.Parameters.AddWithValue("@email", sEmail)
+                        oSqlCmd.CommandText = "UPDATE Account SET Password=@password, Code=@code WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language) VALUES (@email, @password, @code, @language)"
+                        oSqlCmd.Parameters.AddWithValue("@email", sEmail.ToLower)
                         oSqlCmd.Parameters.AddWithValue("@password", sPasswordHash)
                         oSqlCmd.Parameters.AddWithValue("@code", iCode)
+                        oSqlCmd.Parameters.AddWithValue("@language", sLanguage.ToLower)
                         oSqlCmd.ExecuteNonQuery()
 
                         'Select email template
-                        oSqlCmd.CommandText = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name"
+                        oSqlCmd.CommandText = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name AND Language = @language"
                         oSqlCmd.Parameters.AddWithValue("@template_name", "createaccount")
 
                         oTransaction.Commit()
@@ -98,9 +130,10 @@ Public Class createaccount
                             oContext.Response.StatusCode = 437
                             oContext.Response.Write("Already Exist")
                             ZSSOUtilities.WriteLog("CreateAccount : Already exist")
+                            Return
                         End If
-                        ZSSOUtilities.WriteLog("CreateAccount : NOK : " & ex.Message)
-                        Return
+                        oSqlCmd.Transaction.Rollback()
+                        Throw ex
                     End Try
 
                 End Using
