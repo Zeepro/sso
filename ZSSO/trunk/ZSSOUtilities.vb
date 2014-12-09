@@ -101,7 +101,7 @@ Public Class ZSSOUtilities
         Catch ex As Exception
             If IsNothing(oHttpCache.Get("getlocation_service1")) Then
                 Dim oHtmlEmail As New Mail
-                oHtmlEmail.sReceiver = "julien.nguyen@zeepro.fr"
+                oHtmlEmail.sReceiver = "iterr@zeepro.fr"
                 oHtmlEmail.sSubject = "[SSO] Location Service 1 is down"
                 oHtmlEmail.sBody = "The Location service1 (http://ip-api.com/json/" & sIp & ") is down. Please check the logs."
                 oHtmlEmail.Send()
@@ -119,7 +119,7 @@ Public Class ZSSOUtilities
             Catch ex2 As Exception
                 If IsNothing(oHttpCache.Get("getlocation_service2")) Then
                     Dim oHtmlEmail As New Mail
-                    oHtmlEmail.sReceiver = "julien.nguyen@zeepro.fr"
+                    oHtmlEmail.sReceiver = "iterr@zeepro.fr"
                     oHtmlEmail.sSubject = "[SSO] Location Service 2 is down"
                     oHtmlEmail.sBody = "The Location service2 (https://freegeoip.net/json/" & sIp & ") is down. Please check the logs."
                     oHtmlEmail.Send()
@@ -136,7 +136,7 @@ Public Class ZSSOUtilities
                 Catch ex3 As Exception
                     If IsNothing(oHttpCache.Get("getlocation_service3")) Then
                         Dim oHtmlEmail As New Mail
-                        oHtmlEmail.sReceiver = "julien.nguyen@zeepro.fr"
+                        oHtmlEmail.sReceiver = "iterr@zeepro.fr"
                         oHtmlEmail.sSubject = "[SSO] Location Service 3 is down"
                         oHtmlEmail.sBody = "The Location service3 (http://www.telize.com/geoip/" & sIp & ") is down. Please check the logs."
                         oHtmlEmail.Send()

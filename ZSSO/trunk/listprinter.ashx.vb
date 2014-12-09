@@ -80,13 +80,13 @@ Public Class listprinter
                                     arPrinterData("URL") = sSerial & "." & arCachedPrinter("server_hostname") & ":" & arCachedPrinter("port")
                                     arPrinterData("token") = arCachedPrinter("token")
                                     arAccountPrinters(sSerial) = arPrinterData
-                                    End If
-                                End While
-                            End Using
+                                End If
+                            End While
+                        End Using
                         oContext.Response.ContentType = "text/plain"
                         oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(arAccountPrinters.Values))
                         ZSSOUtilities.WriteLog("ListPrinter : OK : " & ZSSOUtilities.oSerializer.Serialize(arAccountPrinters.Values))
-                        End Using
+                    End Using
                 End Using
             End If
         End If
