@@ -7,7 +7,7 @@ Public Class redirect
     Implements System.Web.IHttpHandler
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
-        Dim sSerial As String
+        Dim sState, sCode As String
         Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
         Dim sRedirection As String
 
@@ -19,11 +19,12 @@ Public Class redirect
             Return
         Else
             If oContext.Request.HttpMethod = "GET" Then
-                sSerial = HttpUtility.UrlDecode(oContext.Request.QueryString("sn"))
+                sState = HttpUtility.UrlDecode(oContext.Request.QueryString("state"))
+                sCode = HttpUtility.UrlDecode(oContext.Request.QueryString("code"))
 
-                ZSSOUtilities.WriteLog("Redirect: " & ZSSOUtilities.oSerializer.Serialize({sSerial}))
+                ZSSOUtilities.WriteLog("Redirect: " & ZSSOUtilities.oSerializer.Serialize({sState, sCode}))
 
-                If String.IsNullOrEmpty(sSerial) Then
+                If String.IsNullOrEmpty(sState) Then
                     oContext.Response.ContentType = "text/plain"
                     oContext.Response.StatusCode = 432
                     oContext.Response.Write("Missing parameter")
@@ -31,7 +32,7 @@ Public Class redirect
                     Return
                 End If
 
-                If ZSSOUtilities.SearchSerial(sSerial) = False Then
+                If ZSSOUtilities.SearchSerial(sState) = False Then
                     oContext.Response.ContentType = "text/plain"
                     oContext.Response.StatusCode = 436
                     oContext.Response.Write("Unknown printer")
@@ -39,7 +40,7 @@ Public Class redirect
                     Return
                 End If
 
-                sRedirection = oHttpCache.Get(sSerial)
+                sRedirection = oHttpCache.Get(sState)
 
                 If sRedirection Is Nothing Then
                     oContext.Response.ContentType = "text/plain"
@@ -49,7 +50,11 @@ Public Class redirect
                     Return
                 End If
 
-                oContext.Response.Redirect(sRedirection)
+                If sRedirection.Contains("?") Then
+                    oContext.Response.Redirect(sRedirection + "&" + oContext.Request.Url.Query.Substring(1))
+                Else
+                    oContext.Response.Redirect(sRedirection + oContext.Request.Url.Query)
+                End If
 
                 ZSSOUtilities.WriteLog("Redirect: OK")
             End If
