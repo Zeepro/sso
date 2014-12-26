@@ -3,11 +3,11 @@ Imports System.Web.Services
 Imports System.Data.SqlClient
 Imports System.Runtime.Caching
 
-Public Class redirect
+Public Class redirectfb
     Implements System.Web.IHttpHandler
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
-        Dim sState, sCode As String
+        Dim sState As String
         Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
         Dim sRedirection As String
 
@@ -19,7 +19,7 @@ Public Class redirect
             Return
         Else
             If oContext.Request.HttpMethod = "GET" Then
-                sState = HttpUtility.UrlDecode(oContext.Request.QueryString("state"))
+                sState = HttpUtility.UrlDecode(oContext.Request.QueryString("sn"))
 
                 ZSSOUtilities.WriteLog("Redirect: " & ZSSOUtilities.oSerializer.Serialize({sState}))
 
