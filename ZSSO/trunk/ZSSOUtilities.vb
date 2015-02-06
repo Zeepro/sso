@@ -239,7 +239,48 @@ Public Class ZSSOUtilities
 
                 Try
                     Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                        If oQueryResult.HasRows Then
+                            Return True
+                        End If
+                    End Using
+                Catch ex As Exception
+                End Try
+            End Using
+        End Using
+        Return False
+    End Function
 
+    Public Shared Function SearchService(sService As String)
+        Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+            oConnection.Open()
+
+            Using oSqlCmdSelect As New SqlCommand("SELECT TOP 1 service FROM Service WHERE service = @service", oConnection)
+
+                oSqlCmdSelect.Parameters.AddWithValue("@service", sService)
+
+                Try
+                    Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteScalar.ExecuteReader()
+                        If oQueryResult.HasRows Then
+                            Return True
+                        End If
+                    End Using
+                Catch ex As Exception
+                End Try
+            End Using
+        End Using
+        Return False
+    End Function
+
+    Public Shared Function SearchTicket(sTicket As String)
+        Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+            oConnection.Open()
+
+            Using oSqlCmdSelect As New SqlCommand("SELECT TOP 1 ticket FROM Ticket WHERE ticket = @ticket", oConnection)
+
+                oSqlCmdSelect.Parameters.AddWithValue("@ticket", sTicket)
+
+                Try
+                    Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteScalar.ExecuteReader()
                         If oQueryResult.HasRows Then
                             Return True
                         End If

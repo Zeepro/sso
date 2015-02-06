@@ -14,6 +14,7 @@ Public Class createaccount
         Dim sEmail As String
         Dim sPassword As String
         Dim sLanguage As String = "en"
+        Dim lOptin As Boolean = False
 
         If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "createaccount") > 5 Then
             oContext.Response.ContentType = "text/plain"
@@ -27,12 +28,21 @@ Public Class createaccount
                 oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
                                         "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
                                         "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
-                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>loading</h1></div><form  method=""post"" action=""/createaccount.ashx"" accept-charset=""utf-8"">login <input id=""email"" name=""email"" type=""text"" /><br />password <input id=""password"" name=""password"" type=""text"" /><br />language <input id=""language"" name=""language"" type=""text"" /><input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
+                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>CreateAccount</h1></div>" & _
+                                        "<form  method=""post"" action=""/createaccount.ashx"" accept-charset=""utf-8"">" & _
+                                        "login <input id=""email"" name=""email"" type=""text"" /><br />" & _
+                                        "password <input id=""password"" name=""password"" type=""text"" /><br />" & _
+                                        "language <input id=""language"" name=""language"" type=""text"" /><br />" & _
+                                        "<input type=""checkbox"" name=""optin"" value=""on""> optin<br />" & _
+                                        "<input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
             Else
                 sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
                 sPassword = HttpUtility.UrlDecode(oContext.Request.Form("password"))
                 If String.IsNullOrEmpty(oContext.Request.Form("language")) = False Then
                     sLanguage = HttpUtility.UrlDecode(oContext.Request.Form("language"))
+                End If
+                If oContext.Request.Form("optin") = "on" Then
+                    lOptin = True
                 End If
 
                 ZSSOUtilities.WriteLog("CreateAccount : " & ZSSOUtilities.oSerializer.Serialize({sEmail}))
@@ -90,7 +100,11 @@ Public Class createaccount
 
                     Try
                         'Insert new account
-                        oSqlCmd.CommandText = "UPDATE Account SET Password=@password, Code=@code WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language) VALUES (@email, @password, @code, @language)"
+                        If lOptin Then
+                            oSqlCmd.CommandText = "UPDATE Account SET Password=@password, Code=@code, optin = 1 WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language, optin) VALUES (@email, @password, @code, @language, 1)"
+                        Else
+                            oSqlCmd.CommandText = "UPDATE Account SET Password=@password, Code=@code WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language) VALUES (@email, @password, @code, @language)"
+                        End If
                         oSqlCmd.Parameters.AddWithValue("@email", sEmail.ToLower)
                         oSqlCmd.Parameters.AddWithValue("@password", sPasswordHash)
                         oSqlCmd.Parameters.AddWithValue("@code", iCode)

@@ -31,7 +31,6 @@ Public Class errorlog
             sCode = HttpUtility.UrlDecode(oContext.Request.Form("code"))
             sMessage = HttpUtility.UrlDecode(oContext.Request.Form("message"))
 
-            ZSSOUtilities.WriteLog("ErrorLog : " & ZSSOUtilities.oSerializer.Serialize({sSerial, sTime, sLevel, sCode, sMessage}))
             If String.IsNullOrEmpty(sSerial) Or String.IsNullOrEmpty(sTime) _
                 Or String.IsNullOrEmpty(sLevel) Or String.IsNullOrEmpty(sCode) Then
                 oContext.Response.StatusCode = 432
@@ -100,7 +99,6 @@ Public Class errorlog
                 End Using
 
             End Using
-            ZSSOUtilities.WriteLog("ErrorLog : OK")
         End If
     End Sub
 
