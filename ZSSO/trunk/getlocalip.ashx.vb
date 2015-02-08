@@ -40,15 +40,6 @@ Public Class getlocalip
 
             Dim arReturn As Dictionary(Of String, String) = New Dictionary(Of String, String)
 
-            'Dim arCachedPrinter = TryCast(oHttpCache("printer_" & sSerial.ToUpper), Dictionary(Of String, String))
-            'If Not IsNothing(arCachedPrinter) Then
-            '    arReturn("localIP") = arCachedPrinter("local_ip")
-            '    arReturn("state") = "ok"
-            'Else
-            '    arReturn("localIP") = ""
-            '    arReturn("state") = "unknown"
-            'End If
-
             Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                 oConnexion.Open()
                 Using oSqlCmdSelect As New SqlCommand("DELETE ActivePrinter WHERE date < DATEADD(minute, -20, GETDATE());" & _

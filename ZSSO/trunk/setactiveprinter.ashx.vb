@@ -105,8 +105,6 @@ Public Class setactiveprinter
                 Catch ex As Exception
                     ZSSOUtilities.WriteLog("SetActivePrinter : Err : " & ex.Message)
                 End Try
-
-                'oHttpCache.Insert("printer_" & sSerial.ToUpper, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
             Else
                 oContext.Response.StatusCode = 436
                 oContext.Response.Write("Unknown printer")

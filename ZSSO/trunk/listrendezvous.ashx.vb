@@ -60,12 +60,25 @@ Public Class listrendezvous
             End If
 
             Dim arListRdv = New Dictionary(Of String, Double)
-            Dim oCacheEnum As IDictionaryEnumerator = oHttpCache.GetEnumerator()
-            While oCacheEnum.MoveNext()
-                If oCacheEnum.Current.Key.ToString.StartsWith("rendezvous_server_") Then
-                    arListRdv(oCacheEnum.Current.Value("hostname")) = ZSSOUtilities.CalculateDistanceBetweenCoordinates(oCacheEnum.Current.Value("latitude"), oCacheEnum.Current.Value("longitude"), arPrinterLocationData("latitude"), arPrinterLocationData("longitude"))
-                End If
-            End While
+
+            Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                oConnection.Open()
+                Using oSqlCmdSelect As New SqlCommand("DELETE ActiveRendezvous WHERE date < DATEADD(minute, -20, GETDATE());" & _
+                                                      "SELECT * FROM ActiveRendezvous", oConnection)
+                    Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+                        While oQueryResult.Read()
+                            arListRdv.Add(oQueryResult("hostname"), ZSSOUtilities.CalculateDistanceBetweenCoordinates(oQueryResult("latitude"), oQueryResult("longitude"), arPrinterLocationData("latitude"), arPrinterLocationData("longitude")))
+                        End While
+                    End Using
+                End Using
+            End Using
+
+            'Dim oCacheEnum As IDictionaryEnumerator = oHttpCache.GetEnumerator()
+            'While oCacheEnum.MoveNext()
+            '    If oCacheEnum.Current.Key.ToString.StartsWith("rendezvous_server_") Then
+            '        arListRdv(oCacheEnum.Current.Value("hostname")) = ZSSOUtilities.CalculateDistanceBetweenCoordinates(oCacheEnum.Current.Value("latitude"), oCacheEnum.Current.Value("longitude"), arPrinterLocationData("latitude"), arPrinterLocationData("longitude"))
+            '    End If
+            'End While
 
             Dim lnkSorted = From RdvServer In arListRdv
                          Order By RdvServer.Value

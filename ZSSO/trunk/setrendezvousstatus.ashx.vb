@@ -61,36 +61,58 @@ Public Class setrendezvousstatus
             End Try
             'arServerData("hostname") = HttpUtility.UrlDecode(oContext.Request.Form("hostname"))
 
-                oHttpCache.Insert("rendezvous_server_" & oContext.Request.UserHostAddress, arServerData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
-                'oHttpCache.Insert("rendezvous_server_" & HttpUtility.UrlDecode(oContext.Request.Form("ip")), arServerData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
+            'oHttpCache.Insert("rendezvous_server_" & oContext.Request.UserHostAddress, arServerData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
 
             ' add data into DB
-            Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
-                oConnection.Open()
+            Try
+                Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                    oConnection.Open()
 
-                Dim sQuery = "DELETE FROM RdvStats WHERE ServerTime <= @threemonth"
+                    Dim sQuery = "DELETE FROM RdvStats WHERE ServerTime <= @threemonth"
 
-                Using oSqlCmdDelete As New SqlCommand(sQuery, oConnection)
-                    oSqlCmdDelete.Parameters.AddWithValue("@threemonth", Date.Today.AddMonths(-3))
+                    Using oSqlCmdDelete As New SqlCommand(sQuery, oConnection)
+                        oSqlCmdDelete.Parameters.AddWithValue("@threemonth", Date.Today.AddMonths(-3))
 
-                    oSqlCmdDelete.ExecuteNonQuery()
+                        oSqlCmdDelete.ExecuteNonQuery()
+                    End Using
+
+                    sQuery = "INSERT INTO [RdvStats] ([Hostname], [Bandwidth], [Percentage], [Freememory]) VALUES (@hostname, @bandwidth, @percentage, @freememory)"
+
+                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnection)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@hostname", arServerData("hostname"))
+                        oSqlCmdUpdate.Parameters.AddWithValue("@bandwidth", Convert.ToInt32(sBandwidth))
+                        oSqlCmdUpdate.Parameters.AddWithValue("@percentage", Convert.ToInt32(sPercentage))
+                        oSqlCmdUpdate.Parameters.AddWithValue("@freememory", Convert.ToInt32(sFreeMemory))
+
+                        oSqlCmdUpdate.ExecuteNonQuery()
+
+                    End Using
+
+                    sQuery = "DELETE ActiveRendezvous WHERE date < DATEADD(minute, -20, GETDATE());" & _
+                        "UPDATE ActiveRendezvous SET date = GETDATE(), latitude = @latitude, longitude = @longitude, bandwidth = @bandwidth, percentage = @percentage, freememory = @freememory WHERE hostname = @hostname;" & _
+                        "SELECT @@ROWCOUNT"
+
+                    Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnection)
+                        oSqlCmdUpdate.Parameters.AddWithValue("@hostname", arServerData("hostname"))
+                        oSqlCmdUpdate.Parameters.AddWithValue("@latitude", Convert.ToDouble(arServerData("latitude")))
+                        oSqlCmdUpdate.Parameters.AddWithValue("@longitude", Convert.ToDouble(arServerData("longitude")))
+                        oSqlCmdUpdate.Parameters.AddWithValue("@bandwidth", Convert.ToInt32(sBandwidth))
+                        oSqlCmdUpdate.Parameters.AddWithValue("@percentage", Convert.ToInt32(sPercentage))
+                        oSqlCmdUpdate.Parameters.AddWithValue("@freememory", Convert.ToInt32(sFreeMemory))
+
+                        If oSqlCmdUpdate.ExecuteScalar = 0 Then
+                            oSqlCmdUpdate.CommandText = "INSERT ActiveRendezvous (hostname, latitude, longitude, bandwidth, percentage, freememory)" & _
+                                " VALUES (@hostname, @latitude, @longitude, @bandwidth, @percentage, @freememory)"
+                            oSqlCmdUpdate.ExecuteNonQuery()
+                        End If
+                    End Using
                 End Using
 
-                sQuery = "INSERT INTO [RdvStats] ([Hostname], [Bandwidth], [Percentage], [Freememory]) VALUES (@hostname, @bandwidth, @percentage, @freememory)"
+                ZSSOUtilities.WriteLog("SetRDVStatus : OK : " & ZSSOUtilities.oSerializer.Serialize(arServerData))
+            Catch ex As Exception
+                ZSSOUtilities.WriteLog("SetRDVStatus : NOK : " & ex.Message)
+            End Try
 
-                Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnection)
-                    oSqlCmdUpdate.Parameters.AddWithValue("@hostname", arServerData("hostname"))
-                    oSqlCmdUpdate.Parameters.AddWithValue("@bandwidth", Convert.ToInt32(sBandwidth))
-                    oSqlCmdUpdate.Parameters.AddWithValue("@percentage", Convert.ToInt32(sPercentage))
-                    oSqlCmdUpdate.Parameters.AddWithValue("@freememory", Convert.ToInt32(sFreeMemory))
-
-                    oSqlCmdUpdate.ExecuteNonQuery()
-
-                End Using
-
-            End Using
-
-            ZSSOUtilities.WriteLog("SetRDVStatus : OK : " & ZSSOUtilities.oSerializer.Serialize(arServerData))
         End If
     End Sub
 

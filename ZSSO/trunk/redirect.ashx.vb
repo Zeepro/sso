@@ -7,7 +7,7 @@ Public Class redirect
     Implements System.Web.IHttpHandler
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
-        Dim sState, sCode As String
+        Dim sState As String
         Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
         Dim sRedirection As String
 
