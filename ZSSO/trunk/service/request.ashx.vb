@@ -69,6 +69,7 @@ Public Class request
 
                             Using oSqlCmd As New SqlCommand()
                                 oSqlCmd.Connection = oConnexion
+                                oSqlCmd.Parameters.AddWithValue("@serial", sSerial)
                                 oSqlCmd.Parameters.AddWithValue("@service", sService)
                                 oSqlCmd.Parameters.AddWithValue("@state", "waiting")
                                 If sTicket = "" Then
@@ -87,28 +88,45 @@ Public Class request
                                         oSqlCmd.ExecuteNonQuery()
                                     End If
                                 End If
-                                oSqlCmd.CommandText = "SELECT TOP 1 ticket " & _
-                                    "FROM Service INNER JOIN Ticket " & _
-                                    "ON Service.service = Ticket.service " & _
-                                    "WHERE Service.service = @service AND Service.state = 'available' AND Ticket.state = 'waiting' " & _
-                                    "ORDER BY creation"
-                                If oSqlCmd.ExecuteScalar() = sTicket Then
-                                    oSqlCmd.CommandText = "UPDATE Ticket SET state = 'processed' WHERE ticket = @ticket;" & _
-                                        "UPDATE TOP (1) Service SET state = 'allocated', date = GETDATE() OUTPUT INSERTED.url, INSERTED.token WHERE service = @service"
-                                    Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
-                                        If oQueryResult.Read() Then
-                                            oResponse.Add("URL", oQueryResult("url"))
-                                            oResponse.Add("token", oQueryResult("token"))
-                                        End If
-                                    End Using
-                                    oContext.Response.ContentType = "text/plain"
-                                    oResponse.Add("ticket", sTicket)
-                                    oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(oResponse))
+                                oSqlCmd.CommandText = "SELECT TOP (1) 1 FROM PrinterService WHERE serial = @serial"
+                                If Not oSqlCmd.ExecuteScalar() Is Nothing Then
+                                    ' Association rule
+                                    oSqlCmd.CommandText = "SELECT TOP 1 ticket " & _
+                                        "FROM Service INNER JOIN Ticket " & _
+                                        "ON Service.service = Ticket.service " & _
+                                        "WHERE Service.service = @service AND Service.state = 'available' AND EXISTS (SELECT 1 FROM PrinterService WHERE Service.url = PrinterService.url) AND Ticket.state = 'waiting' " & _
+                                        "ORDER BY creation"
+                                    If oSqlCmd.ExecuteScalar() = sTicket Then
+                                        oSqlCmd.CommandText = "UPDATE Ticket SET state = 'processed' WHERE ticket = @ticket;" & _
+                                            "UPDATE TOP (1) Service SET state = 'allocated', date = GETDATE() OUTPUT INSERTED.url, INSERTED.token WHERE service = @service AND Service.state = 'available' AND EXISTS (SELECT 1 FROM PrinterService WHERE Service.url = PrinterService.url)"
+                                        Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
+                                            If oQueryResult.Read() Then
+                                                oResponse.Add("URL", oQueryResult("url"))
+                                                oResponse.Add("token", oQueryResult("token"))
+                                            End If
+                                        End Using
+                                    End If
                                 Else
-                                    oContext.Response.ContentType = "text/plain"
-                                    oResponse.Add("ticket", sTicket)
-                                    oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(oResponse))
+                                    ' Common rule
+                                    oSqlCmd.CommandText = "SELECT TOP 1 ticket " & _
+                                        "FROM Service INNER JOIN Ticket " & _
+                                        "ON Service.service = Ticket.service " & _
+                                        "WHERE Service.service = @service AND Service.state = 'available' AND NOT EXISTS (SELECT 1 FROM PrinterService WHERE Service.url = PrinterService.url) AND Ticket.state = 'waiting' " & _
+                                        "ORDER BY creation"
+                                    If oSqlCmd.ExecuteScalar() = sTicket Then
+                                        oSqlCmd.CommandText = "UPDATE Ticket SET state = 'processed' WHERE ticket = @ticket;" & _
+                                            "UPDATE TOP (1) Service SET state = 'allocated', date = GETDATE() OUTPUT INSERTED.url, INSERTED.token WHERE service = @service AND Service.state = 'available' AND NOT EXISTS (SELECT 1 FROM PrinterService WHERE Service.url = PrinterService.url)"
+                                        Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
+                                            If oQueryResult.Read() Then
+                                                oResponse.Add("URL", oQueryResult("url"))
+                                                oResponse.Add("token", oQueryResult("token"))
+                                            End If
+                                        End Using
+                                    End If
                                 End If
+                                oContext.Response.ContentType = "text/plain"
+                                oResponse.Add("ticket", sTicket)
+                                oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(oResponse))
                             End Using
                         Catch ex As Exception
                             ZSSOUtilities.WriteLog("Registration: " & ex.Message)

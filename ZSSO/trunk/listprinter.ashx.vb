@@ -58,9 +58,11 @@ Public Class listprinter
                         Return
                     End If
 
-                    Dim sQuery = "SELECT [AccountPrinterAssociation].Email, [AccountPrinterAssociation].Deleted, [AccountPrinterAssociation].Serial, [Printer].Name " & _
+                    Dim sQuery = "DELETE ActivePrinter WHERE date < DATEADD(minute, -20, GETDATE());" & _
+                        "SELECT [AccountPrinterAssociation].Email, [AccountPrinterAssociation].Deleted, [AccountPrinterAssociation].Serial, [Printer].Name, [ActivePrinter].local_ip, [ActivePrinter].server_hostname, [ActivePrinter].port, [ActivePrinter].token " & _
                         "FROM [AccountPrinterAssociation] " & _
                         "INNER JOIN Printer ON [AccountPrinterAssociation].Serial = [Printer].Serial " & _
+                        "INNER JOIN ActivePrinter ON [ActivePrinter].Serial = [Printer].Serial " & _
                         "WHERE [AccountPrinterAssociation].Email = @email AND [AccountPrinterAssociation].Deleted IS NULL"
 
                     Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
@@ -72,21 +74,49 @@ Public Class listprinter
                             While oQueryResult.Read()
                                 Dim sSerial = oQueryResult(oQueryResult.GetOrdinal("Serial"))
 
-                                Dim arCachedPrinter = TryCast(oHttpCache("printer_" & sSerial), Dictionary(Of String, String))
-                                If Not IsNothing(arCachedPrinter) Then
-                                    Dim arPrinterData = New Dictionary(Of String, String)
-                                    arPrinterData("printername") = oQueryResult(oQueryResult.GetOrdinal("Name"))
-                                    arPrinterData("localIP") = arCachedPrinter("local_ip")
-                                    arPrinterData("URL") = sSerial & "." & arCachedPrinter("server_hostname") & ":" & arCachedPrinter("port")
-                                    arPrinterData("token") = arCachedPrinter("token")
-                                    arAccountPrinters(sSerial) = arPrinterData
-                                End If
+                                Dim arPrinterData = New Dictionary(Of String, String)
+                                arPrinterData("printername") = oQueryResult(oQueryResult.GetOrdinal("Name"))
+                                arPrinterData("localIP") = oQueryResult("local_ip")
+                                arPrinterData("URL") = sSerial & "." & oQueryResult("server_hostname") & ":" & oQueryResult("port")
+                                arPrinterData("token") = oQueryResult("token")
+                                arAccountPrinters(sSerial) = arPrinterData
                             End While
                         End Using
                         oContext.Response.ContentType = "text/plain"
                         oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(arAccountPrinters.Values))
                         ZSSOUtilities.WriteLog("ListPrinter : OK : " & ZSSOUtilities.oSerializer.Serialize(arAccountPrinters.Values))
                     End Using
+
+                    'Dim sQuery = "SELECT [AccountPrinterAssociation].Email, [AccountPrinterAssociation].Deleted, [AccountPrinterAssociation].Serial, [Printer].Name " & _
+                    '    "FROM [AccountPrinterAssociation] " & _
+                    '    "INNER JOIN Printer ON [AccountPrinterAssociation].Serial = [Printer].Serial " & _
+                    '    "WHERE [AccountPrinterAssociation].Email = @email AND [AccountPrinterAssociation].Deleted IS NULL"
+
+                    'Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
+                    '    oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail)
+
+                    '    Dim arAccountPrinters = New Dictionary(Of String, Dictionary(Of String, String))
+                    '    Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
+
+                    '        While oQueryResult.Read()
+                    '            Dim sSerial = oQueryResult(oQueryResult.GetOrdinal("Serial"))
+
+                    '            Dim arCachedPrinter = TryCast(oHttpCache("printer_" & sSerial), Dictionary(Of String, String))
+                    '            If Not IsNothing(arCachedPrinter) Then
+                    '                Dim arPrinterData = New Dictionary(Of String, String)
+                    '                arPrinterData("printername") = oQueryResult(oQueryResult.GetOrdinal("Name"))
+                    '                arPrinterData("localIP") = arCachedPrinter("local_ip")
+                    '                arPrinterData("URL") = sSerial & "." & arCachedPrinter("server_hostname") & ":" & arCachedPrinter("port")
+                    '                arPrinterData("token") = arCachedPrinter("token")
+                    '                arAccountPrinters(sSerial) = arPrinterData
+                    '            End If
+                    '        End While
+                    '    End Using
+                    '    oContext.Response.ContentType = "text/plain"
+                    '    oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(arAccountPrinters.Values))
+                    '    ZSSOUtilities.WriteLog("ListPrinter : OK : " & ZSSOUtilities.oSerializer.Serialize(arAccountPrinters.Values))
+                    'End Using
+
                 End Using
             End If
         End If

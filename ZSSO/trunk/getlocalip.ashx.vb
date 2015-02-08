@@ -40,14 +40,31 @@ Public Class getlocalip
 
             Dim arReturn As Dictionary(Of String, String) = New Dictionary(Of String, String)
 
-            Dim arCachedPrinter = TryCast(oHttpCache("printer_" & sSerial.ToUpper), Dictionary(Of String, String))
-            If Not IsNothing(arCachedPrinter) Then
-                arReturn("localIP") = arCachedPrinter("local_ip")
-                arReturn("state") = "ok"
-            Else
-                arReturn("localIP") = ""
-                arReturn("state") = "unknown"
-            End If
+            'Dim arCachedPrinter = TryCast(oHttpCache("printer_" & sSerial.ToUpper), Dictionary(Of String, String))
+            'If Not IsNothing(arCachedPrinter) Then
+            '    arReturn("localIP") = arCachedPrinter("local_ip")
+            '    arReturn("state") = "ok"
+            'Else
+            '    arReturn("localIP") = ""
+            '    arReturn("state") = "unknown"
+            'End If
+
+            Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                oConnexion.Open()
+                Using oSqlCmdSelect As New SqlCommand("DELETE ActivePrinter WHERE date < DATEADD(minute, -20, GETDATE());" & _
+                                                      "SELECT local_ip FROM ActivePrinter WHERE serial = @serial", oConnexion)
+                    oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial.ToUpper)
+                    Dim oTmp As Object = oSqlCmdSelect.ExecuteScalar()
+                    If oSqlCmdSelect.ExecuteScalar() Is Nothing Then
+                        arReturn("localIP") = ""
+                        arReturn("state") = "unknown"
+                    Else
+                        arReturn("localIP") = DirectCast(oTmp, String)
+                        arReturn("state") = "ok"
+                    End If
+                End Using
+            End Using
+
 
             oContext.Response.AddHeader("Access-Control-Allow-Origin", "*")
             oContext.Response.ContentType = "application/json"

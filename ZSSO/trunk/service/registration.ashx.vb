@@ -26,10 +26,10 @@ Public Class registration
                                     "State <input id=""state"" name=""state"" type=""text"" /><br />" & _
                                     "<input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")
         Else
-            sToken = HttpUtility.UrlDecode(oContext.Request.Form("token"))
-            sService = HttpUtility.UrlDecode(oContext.Request.Form("service"))
-            sURL = HttpUtility.UrlDecode(oContext.Request.Form("url"))
-            sState = HttpUtility.UrlDecode(oContext.Request.Form("state"))
+            sToken = oContext.Request.Form("token")
+            sService = oContext.Request.Form("service")
+            sURL = oContext.Request.Form("url")
+            sState = oContext.Request.Form("state")
 
             If sToken = "" OrElse sService = "" OrElse sState = "" Then
                 oContext.Response.ContentType = "text/plain"
@@ -54,7 +54,7 @@ Public Class registration
                     oContext.Response.ContentType = "text/plain"
                     oContext.Response.StatusCode = 433
                     oContext.Response.Write("Incorrect parameter")
-                    ZSSOUtilities.WriteLog("Registration: Incorrect parameter")
+                    ZSSOUtilities.WriteLog("Registration: Incorrect parameter (" & sState & ")")
                     Return
             End Select
 

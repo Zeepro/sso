@@ -84,7 +84,29 @@ Public Class setactiveprinter
                 Catch ex As Exception
                     arSerialData("server_hostname") = Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName
                 End Try
-                oHttpCache.Insert("printer_" & sSerial.ToUpper, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
+
+                Try
+                    Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                        oConnexion.Open()
+                        Using oSqlCmdSelect As New SqlCommand("DELETE ActivePrinter WHERE date < DATEADD(minute, -20, GETDATE());" & _
+                                                              "UPDATE ActivePrinter SET date = GETDATE(), local_ip = @local_ip, token = @token, port = @port, server_hostname = @server_hostname WHERE serial = @serial;" & _
+                                                              "SELECT @@ROWCOUNT", oConnexion)
+                            oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial.ToUpper)
+                            oSqlCmdSelect.Parameters.AddWithValue("@local_ip", sIp)
+                            oSqlCmdSelect.Parameters.AddWithValue("@token", sToken)
+                            oSqlCmdSelect.Parameters.AddWithValue("@port", iPort)
+                            oSqlCmdSelect.Parameters.AddWithValue("@server_hostname", Dns.GetHostEntry(oContext.Request.UserHostAddress).HostName)
+                            If oSqlCmdSelect.ExecuteScalar() = 0 Then
+                                oSqlCmdSelect.CommandText = "INSERT ActivePrinter (serial, local_ip, token, port, server_hostname) VALUES (@serial, @local_ip, @token, @port, @server_hostname)"
+                                oSqlCmdSelect.ExecuteNonQuery()
+                            End If
+                        End Using
+                    End Using
+                Catch ex As Exception
+                    ZSSOUtilities.WriteLog("SetActivePrinter : Err : " & ex.Message)
+                End Try
+
+                'oHttpCache.Insert("printer_" & sSerial.ToUpper, arSerialData, Nothing, DateTime.Now.AddMinutes(20.0), TimeSpan.Zero)
             Else
                 oContext.Response.StatusCode = 436
                 oContext.Response.Write("Unknown printer")
