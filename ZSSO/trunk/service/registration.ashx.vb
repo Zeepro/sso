@@ -59,6 +59,8 @@ Public Class registration
             End Select
 
             Try
+                Dim arPrinterLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation(oContext.Request.UserHostAddress)
+
                 Using oConnexion As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                     oConnexion.Open()
                     Using oSqlCommande As New SqlCommand("register", oConnexion)
@@ -67,6 +69,8 @@ Public Class registration
                         oSqlCommande.Parameters.AddWithValue("service", sService)
                         oSqlCommande.Parameters.AddWithValue("url", sURL)
                         oSqlCommande.Parameters.AddWithValue("state", sState)
+                        oSqlCommande.Parameters.AddWithValue("latitude", CDbl(arPrinterLocationData("latitude")))
+                        oSqlCommande.Parameters.AddWithValue("longitude", CDbl(arPrinterLocationData("longitude")))
                         oSqlCommande.ExecuteNonQuery()
                     End Using
                 End Using

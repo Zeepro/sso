@@ -11,7 +11,7 @@ Public Class request
         Dim sSerial As String
         Dim sService As String
         Dim sTicket As String
-        Static oLock As New Object
+        Static oLock As New Object  ' Application level semaphore
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
@@ -65,65 +65,119 @@ Public Class request
 
                     SyncLock oLock
                         Try
+                            Dim oDataTable As DataTable
                             Dim oResponse As New Dictionary(Of String, String)
+                            Dim oTmp As Object
 
                             Using oSqlCmd As New SqlCommand()
                                 oSqlCmd.Connection = oConnexion
                                 oSqlCmd.Parameters.AddWithValue("@serial", sSerial)
                                 oSqlCmd.Parameters.AddWithValue("@service", sService)
-                                oSqlCmd.Parameters.AddWithValue("@state", "waiting")
+
+                                ' Ticket management
                                 If sTicket = "" Then
+                                    ' Creation
                                     sTicket = System.Web.Security.Membership.GeneratePassword(40, 0)
                                     oSqlCmd.Parameters.AddWithValue("@ticket", sTicket)
-                                    oSqlCmd.CommandText = "DELETE Ticket WHERE [update] < DATEADD(hour, -1, GETDATE());DELETE Ticket WHERE [update] < DATEADD(second, -10, GETDATE()) AND state = 'waiting';INSERT Ticket (ticket, service, state) VALUES (@ticket, @service, @state)"
+                                    oSqlCmd.CommandText = "DELETE Ticket WHERE [update] < DATEADD(hour, -1, GETDATE());DELETE Ticket WHERE [update] < DATEADD(second, -10, GETDATE()) AND state = 'waiting';INSERT Ticket (ticket, service, state) VALUES (@ticket, @service, 'waiting')"
                                     oSqlCmd.ExecuteNonQuery()
                                 Else
+                                    ' Update / recreation
                                     oSqlCmd.CommandText = "DELETE Ticket WHERE [update] < DATEADD(hour, -1, GETDATE());DELETE Ticket WHERE [update] < DATEADD(second, -10, GETDATE()) AND state = 'waiting';UPDATE Ticket SET [update] = GETDATE(), state = 'waiting' WHERE ticket = @ticket;SELECT @@ROWCOUNT"
                                     oSqlCmd.Parameters.AddWithValue("@ticket", sTicket)
                                     If oSqlCmd.ExecuteScalar() <> 1 Then
                                         ' Unknown ticket
                                         sTicket = System.Web.Security.Membership.GeneratePassword(40, 0)
                                         oSqlCmd.Parameters("@ticket").Value = sTicket
-                                        oSqlCmd.CommandText = "INSERT Ticket (ticket, service, state) VALUES (@ticket, @service, @state)"
+                                        oSqlCmd.CommandText = "INSERT Ticket (ticket, service, state) VALUES (@ticket, @service, 'waiting')"
                                         oSqlCmd.ExecuteNonQuery()
                                     End If
                                 End If
-                                oSqlCmd.CommandText = "SELECT TOP (1) 1 FROM PrinterService WHERE serial = @serial"
-                                If Not oSqlCmd.ExecuteScalar() Is Nothing Then
-                                    ' Association rule
+
+                                oSqlCmd.CommandText = "SELECT queue FROM PrinterQueue WHERE serial = @serial"
+                                oTmp = oSqlCmd.ExecuteScalar()
+                                If oTmp Is Nothing Then
+                                    ' Common queue
+
+                                    ' Ticket selection
                                     oSqlCmd.CommandText = "SELECT TOP 1 ticket " & _
-                                        "FROM Service INNER JOIN Ticket " & _
-                                        "ON Service.service = Ticket.service " & _
-                                        "WHERE Service.service = @service AND Service.state = 'available' AND EXISTS (SELECT 1 FROM PrinterService WHERE Service.url = PrinterService.url) AND Ticket.state = 'waiting' " & _
+                                        "FROM Service " & _
+                                        "INNER JOIN Ticket ON Service.service = Ticket.service " & _
+                                        "WHERE Service.service = @service " & _
+                                        "AND Service.state = 'available' " & _
+                                        "AND NOT EXISTS (SELECT 1 FROM ServiceQueue WHERE Service.url = ServiceQueue.url) " & _
+                                        "AND Ticket.state = 'waiting' " & _
                                         "ORDER BY creation"
                                     If oSqlCmd.ExecuteScalar() = sTicket Then
-                                        oSqlCmd.CommandText = "UPDATE Ticket SET state = 'processed' WHERE ticket = @ticket;" & _
-                                            "UPDATE TOP (1) Service SET state = 'allocated', date = GETDATE() OUTPUT INSERTED.url, INSERTED.token WHERE service = @service AND Service.state = 'available' AND EXISTS (SELECT 1 FROM PrinterService WHERE Service.url = PrinterService.url)"
+                                        ' Server list
+                                        oSqlCmd.CommandText = "SELECT token, url, lat = ISNULL(latitude, 0), long = ISNULL(longitude, 0), distance = 0.0 " & _
+                                            "FROM Service " & _
+                                            "WHERE Service.service = @service " & _
+                                            "AND Service.state = 'available' " & _
+                                            "AND NOT EXISTS (SELECT 1 FROM ServiceQueue WHERE Service.url = ServiceQueue.url)"
                                         Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
-                                            If oQueryResult.Read() Then
-                                                oResponse.Add("URL", oQueryResult("url"))
-                                                oResponse.Add("token", oQueryResult("token"))
-                                            End If
+                                            oDataTable = New DataTable
+                                            oDataTable.Load(oQueryResult)
+                                            oDataTable.Columns("distance").ReadOnly = False
                                         End Using
                                     End If
                                 Else
-                                    ' Common rule
+                                    ' Dedicated queue
+                                    oSqlCmd.Parameters.AddWithValue("@queue", DirectCast(oTmp, Integer))
+
+                                    ' Ticket selection
                                     oSqlCmd.CommandText = "SELECT TOP 1 ticket " & _
-                                        "FROM Service INNER JOIN Ticket " & _
-                                        "ON Service.service = Ticket.service " & _
-                                        "WHERE Service.service = @service AND Service.state = 'available' AND NOT EXISTS (SELECT 1 FROM PrinterService WHERE Service.url = PrinterService.url) AND Ticket.state = 'waiting' " & _
+                                        "FROM Service " & _
+                                        "INNER JOIN Ticket ON Service.service = Ticket.service " & _
+                                        "INNER JOIN ServiceQueue ON Servicequeue.url = Service.url " & _
+                                        "WHERE Service.service = @service " & _
+                                        "AND ServiceQueue.queue = @queue " & _
+                                        "AND Service.state = 'available' " & _
+                                        "AND Ticket.state = 'waiting' " & _
                                         "ORDER BY creation"
                                     If oSqlCmd.ExecuteScalar() = sTicket Then
-                                        oSqlCmd.CommandText = "UPDATE Ticket SET state = 'processed' WHERE ticket = @ticket;" & _
-                                            "UPDATE TOP (1) Service SET state = 'allocated', date = GETDATE() OUTPUT INSERTED.url, INSERTED.token WHERE service = @service AND Service.state = 'available' AND NOT EXISTS (SELECT 1 FROM PrinterService WHERE Service.url = PrinterService.url)"
+                                        ' Server list
+                                        oSqlCmd.CommandText = "SELECT token, Service.url, lat = ISNULL(latitude, 0), long = ISNULL(longitude, 0), distance = 0.0 " & _
+                                            "FROM Service " & _
+                                            "INNER JOIN ServiceQueue ON Servicequeue.url = Service.url " & _
+                                            "WHERE Service.service = @service " & _
+                                            "AND ServiceQueue.queue = @queue " & _
+                                            "AND Service.state = 'available'"
                                         Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
-                                            If oQueryResult.Read() Then
-                                                oResponse.Add("URL", oQueryResult("url"))
-                                                oResponse.Add("token", oQueryResult("token"))
-                                            End If
+                                            oDataTable = New DataTable
+                                            oDataTable.Load(oQueryResult)
+                                            oDataTable.Columns("distance").ReadOnly = False
                                         End Using
                                     End If
                                 End If
+
+                                If Not oDataTable Is Nothing Then
+                                    If oDataTable.Rows.Count > 0 Then
+                                        ' Sort by distance
+                                        If oDataTable.Rows.Count > 1 Then
+                                            Dim arPrinterLocationData As Dictionary(Of String, String) = ZSSOUtilities.GetLocation(oContext.Request.UserHostAddress)
+                                            Dim nLatitude As Double = CDbl(arPrinterLocationData("latitude"))
+                                            Dim nLongitude As Double = CDbl(arPrinterLocationData("longitude"))
+
+                                            For Each oRow As DataRow In oDataTable.Rows
+                                                oRow("distance") = ZSSOUtilities.CalculateDistanceBetweenCoordinates(oRow("lat"), oRow("long"), nLatitude, nLongitude)
+                                            Next
+                                            Dim oDataView As New DataView(oDataTable)
+                                            oDataView.Sort = "distance"
+                                            oResponse.Add("url", oDataView(0)("url"))
+                                            oResponse.Add("token", oDataView(0)("token"))
+                                        Else
+                                            oResponse.Add("url", oDataTable(0)("url"))
+                                            oResponse.Add("token", oDataTable(0)("token"))
+                                        End If
+                                        ' Set service and ticket
+                                        oSqlCmd.CommandText = "UPDATE Ticket SET state = 'processed' WHERE ticket = @ticket;" & _
+                                            "UPDATE Service SET state = 'allocated', date = GETDATE() WHERE token = @token"
+                                        oSqlCmd.Parameters.AddWithValue("@token", oResponse("token"))
+                                        oSqlCmd.ExecuteNonQuery()
+                                    End If
+                                End If
+
                                 oContext.Response.ContentType = "text/plain"
                                 oResponse.Add("ticket", sTicket)
                                 oContext.Response.Write(ZSSOUtilities.oSerializer.Serialize(oResponse))
