@@ -57,7 +57,7 @@ Public Class request
                         If oSqlCmdSelect.ExecuteScalar() Is Nothing Then
                             oContext.Response.ContentType = "text/plain"
                             oContext.Response.StatusCode = 441
-                            oContext.Response.Write("Unknown service")
+                            oContext.Response.Write("Service unavailable")
                             ZSSOUtilities.WriteLog("Registration: Service unavailable")
                             Return
                         End If
@@ -83,15 +83,29 @@ Public Class request
                                     oSqlCmd.ExecuteNonQuery()
                                 Else
                                     ' Update / recreation
-                                    oSqlCmd.CommandText = "DELETE Ticket WHERE [update] < DATEADD(hour, -1, GETDATE());DELETE Ticket WHERE [update] < DATEADD(second, -10, GETDATE()) AND state = 'waiting';UPDATE Ticket SET [update] = GETDATE(), state = 'waiting' WHERE ticket = @ticket;SELECT @@ROWCOUNT"
+                                    oSqlCmd.CommandText = "DELETE Ticket WHERE [update] < DATEADD(hour, -1, GETDATE());DELETE Ticket WHERE [update] < DATEADD(second, -100, GETDATE()) AND state = 'waiting';UPDATE Ticket SET [update] = GETDATE(), state = 'waiting' OUTPUT inserted.creation WHERE ticket = @ticket"
                                     oSqlCmd.Parameters.AddWithValue("@ticket", sTicket)
-                                    If oSqlCmd.ExecuteScalar() <> 1 Then
-                                        ' Unknown ticket
-                                        sTicket = System.Web.Security.Membership.GeneratePassword(40, 0)
-                                        oSqlCmd.Parameters("@ticket").Value = sTicket
-                                        oSqlCmd.CommandText = "INSERT Ticket (ticket, service, state) VALUES (@ticket, @service, 'waiting')"
-                                        oSqlCmd.ExecuteNonQuery()
-                                    End If
+
+                                    Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
+                                        If oQueryResult.HasRows Then
+                                            oQueryResult.Read()
+                                            If DateDiff(DateInterval.Minute, DirectCast(oQueryResult("creation"), DateTime), Now) > 2 Then
+                                                ' Timeout
+                                                oContext.Response.ContentType = "text/plain"
+                                                oContext.Response.StatusCode = 441
+                                                oContext.Response.Write("Service unavailable")
+                                                ZSSOUtilities.WriteLog("Registration: Service unavailable")
+                                                Return
+                                            End If
+                                        Else
+                                            oQueryResult.Close()
+                                            ' Unknown ticket
+                                            sTicket = System.Web.Security.Membership.GeneratePassword(40, 0)
+                                            oSqlCmd.Parameters("@ticket").Value = sTicket
+                                            oSqlCmd.CommandText = "INSERT Ticket (ticket, service, state) VALUES (@ticket, @service, 'waiting')"
+                                            oSqlCmd.ExecuteNonQuery()
+                                        End If
+                                    End Using
                                 End If
 
                                 oSqlCmd.CommandText = "SELECT queue FROM PrinterQueue WHERE serial = @serial"
@@ -100,7 +114,8 @@ Public Class request
                                     ' Common queue
 
                                     ' Ticket selection
-                                    oSqlCmd.CommandText = "SELECT TOP 1 ticket " & _
+                                    oSqlCmd.CommandText = "DELETE Service WHERE date < DATEADD(minute, -2, GETDATE());" & _
+                                        "SELECT TOP 1 ticket " & _
                                         "FROM Service " & _
                                         "INNER JOIN Ticket ON Service.service = Ticket.service " & _
                                         "WHERE Service.service = @service " & _
@@ -126,7 +141,8 @@ Public Class request
                                     oSqlCmd.Parameters.AddWithValue("@queue", DirectCast(oTmp, Integer))
 
                                     ' Ticket selection
-                                    oSqlCmd.CommandText = "SELECT TOP 1 ticket " & _
+                                    oSqlCmd.CommandText = "DELETE Service WHERE date < DATEADD(minute, -2, GETDATE());" & _
+                                        "SELECT TOP 1 ticket " & _
                                         "FROM Service " & _
                                         "INNER JOIN Ticket ON Service.service = Ticket.service " & _
                                         "INNER JOIN ServiceQueue ON Servicequeue.url = Service.url " & _
@@ -164,10 +180,10 @@ Public Class request
                                             Next
                                             Dim oDataView As New DataView(oDataTable)
                                             oDataView.Sort = "distance"
-                                            oResponse.Add("url", oDataView(0)("url"))
+                                            oResponse.Add("URL", oDataView(0)("url"))
                                             oResponse.Add("token", oDataView(0)("token"))
                                         Else
-                                            oResponse.Add("url", oDataTable(0)("url"))
+                                            oResponse.Add("URL", oDataTable(0)("url"))
                                             oResponse.Add("token", oDataTable(0)("token"))
                                         End If
                                         ' Set service and ticket
