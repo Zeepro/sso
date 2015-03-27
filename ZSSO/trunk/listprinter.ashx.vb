@@ -63,7 +63,8 @@ Public Class listprinter
                         "FROM [AccountPrinterAssociation] " & _
                         "INNER JOIN Printer ON [AccountPrinterAssociation].Serial = [Printer].Serial " & _
                         "INNER JOIN ActivePrinter ON [ActivePrinter].Serial = [Printer].Serial " & _
-                        "WHERE [AccountPrinterAssociation].Email = @email AND [AccountPrinterAssociation].Deleted IS NULL"
+                        "WHERE [AccountPrinterAssociation].Email = @email AND [AccountPrinterAssociation].Deleted IS NULL " & _
+                        "ORDER BY [Printer].Name"
 
                     Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
                         oSqlCmdSelect.Parameters.AddWithValue("@email", sEmail)

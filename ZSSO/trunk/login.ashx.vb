@@ -30,9 +30,9 @@ Public Class login
         Else
             sEmail = HttpUtility.UrlDecode(oContext.Request.Form("email"))
             sPassword = HttpUtility.UrlDecode(oContext.Request.Form("password"))
-            sOptin = HttpUtility.UrlDecode(oContext.Request.Form("optin")).ToLower
-            If sOptin <> "" Then
-                If sOptin = "on" Then
+            sOptin = HttpUtility.UrlDecode(oContext.Request.Form("optin"))
+            If Not sOptin Is Nothing AndAlso sOptin <> "" Then
+                If sOptin.ToLower = "on" Then
                     lOptin = True
                 Else
                     lOptin = False

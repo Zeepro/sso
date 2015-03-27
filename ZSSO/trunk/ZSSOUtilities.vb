@@ -87,65 +87,76 @@ Public Class ZSSOUtilities
     Public Shared Function GetLocation(sIp As String) As Dictionary(Of String, String)
         Dim arLocationData As Dictionary(Of String, String)
         Dim oHttpCache As Caching.Cache = HttpRuntime.Cache
+        Static dGeo As New Dictionary(Of String, Dictionary(Of String, String))
 
-        Try
-            Dim oRequest As WebRequest = WebRequest.Create("http://ip-api.com/json/" & sIp)
-            Using oResponseStream As Stream = oRequest.GetResponse().GetResponseStream()
-                Dim sResponse As String = New StreamReader(oResponseStream).ReadToEnd()
-                Dim arData As Dictionary(Of String, String) = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
-                arLocationData = New Dictionary(Of String, String)
-                arLocationData("latitude") = arData("lat")
-                arLocationData("longitude") = arData("lon")
-            End Using
+        arLocationData = HttpRuntime.Cache(sIp)
+
+        If Not arLocationData Is Nothing Then
             Return arLocationData
-        Catch ex As Exception
-            If IsNothing(oHttpCache.Get("getlocation_service1")) Then
-                Dim oHtmlEmail As New Mail
-                oHtmlEmail.sReceiver = "iterr@zeepro.fr"
-                oHtmlEmail.sSubject = "[SSO] Location Service 1 is down"
-                oHtmlEmail.sBody = "The Location service1 (http://ip-api.com/json/" & sIp & ") is down. Please check the logs."
-                oHtmlEmail.Send()
-                oHttpCache.Insert("getlocation_service1", "Service1 is down", Nothing, DateTime.Now.AddMinutes(60.0), TimeSpan.Zero)
-            End If
-            ZSSOUtilities.WriteLog("GetLocation : NOK (service1) : " & ex.Message)
+        Else
             Try
-                Dim oRequest As WebRequest = WebRequest.Create("https://freegeoip.net/json/" & sIp)
+                Dim oRequest As WebRequest = WebRequest.Create("http://ip-api.com/json/" & sIp)
                 Using oResponseStream As Stream = oRequest.GetResponse().GetResponseStream()
                     Dim sResponse As String = New StreamReader(oResponseStream).ReadToEnd()
-
-                    arLocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
+                    Dim arData As Dictionary(Of String, String) = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
+                    arLocationData = New Dictionary(Of String, String)
+                    arLocationData("latitude") = arData("lat")
+                    arLocationData("longitude") = arData("lon")
                 End Using
+                HttpRuntime.Cache.Insert("geo_" & sIp, arLocationData, Nothing, DateTime.Now.AddDays(1), TimeSpan.Zero)
                 Return arLocationData
-            Catch ex2 As Exception
-                If IsNothing(oHttpCache.Get("getlocation_service2")) Then
+            Catch ex As Exception
+                If IsNothing(oHttpCache.Get("getlocation_service1")) Then
                     Dim oHtmlEmail As New Mail
                     oHtmlEmail.sReceiver = "iterr@zeepro.fr"
-                    oHtmlEmail.sSubject = "[SSO] Location Service 2 is down"
-                    oHtmlEmail.sBody = "The Location service2 (https://freegeoip.net/json/" & sIp & ") is down. Please check the logs."
+                    oHtmlEmail.sSubject = "[SSO] Location Service 1 is down"
+                    oHtmlEmail.sBody = "The Location service1 (http://ip-api.com/json/" & sIp & ") is down. Please check the logs."
                     oHtmlEmail.Send()
-                    oHttpCache.Insert("getlocation_service2", "Service2 is down", Nothing, DateTime.Now.AddMinutes(60.0), TimeSpan.Zero)
+                    oHttpCache.Insert("getlocation_service1", "Service1 is down", Nothing, DateTime.Now.AddMinutes(60.0), TimeSpan.Zero)
                 End If
-                ZSSOUtilities.WriteLog("GetLocation : NOK (service2) : " & ex2.Message)
+                ZSSOUtilities.WriteLog("GetLocation : NOK (service1) : " & ex.Message)
                 Try
-                    Dim oRequest As WebRequest = WebRequest.Create("http://www.telize.com/geoip/" & sIp)
+                    Dim oRequest As WebRequest = WebRequest.Create("https://freegeoip.net/json/" & sIp)
                     Using oResponseStream As Stream = oRequest.GetResponse().GetResponseStream()
                         Dim sResponse As String = New StreamReader(oResponseStream).ReadToEnd()
+
                         arLocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
                     End Using
+                    HttpRuntime.Cache.Insert("geo_" & sIp, arLocationData, Nothing, DateTime.Now.AddDays(1), TimeSpan.Zero)
                     Return arLocationData
-                Catch ex3 As Exception
-                    If IsNothing(oHttpCache.Get("getlocation_service3")) Then
+                Catch ex2 As Exception
+                    If IsNothing(oHttpCache.Get("getlocation_service2")) Then
                         Dim oHtmlEmail As New Mail
                         oHtmlEmail.sReceiver = "iterr@zeepro.fr"
-                        oHtmlEmail.sSubject = "[SSO] Location Service 3 is down"
-                        oHtmlEmail.sBody = "The Location service3 (http://www.telize.com/geoip/" & sIp & ") is down. Please check the logs."
+                        oHtmlEmail.sSubject = "[SSO] Location Service 2 is down"
+                        oHtmlEmail.sBody = "The Location service2 (https://freegeoip.net/json/" & sIp & ") is down. Please check the logs."
                         oHtmlEmail.Send()
-                        oHttpCache.Insert("getlocation_service3", "Service3 is down", Nothing, DateTime.Now.AddMinutes(60.0), TimeSpan.Zero)
+                        oHttpCache.Insert("getlocation_service2", "Service2 is down", Nothing, DateTime.Now.AddMinutes(60.0), TimeSpan.Zero)
                     End If
-                    ZSSOUtilities.WriteLog("GetLocation : NOK (service3) : " & ex3.Message)
+                    ZSSOUtilities.WriteLog("GetLocation : NOK (service2) : " & ex2.Message)
+                    Try
+                        Dim oRequest As WebRequest = WebRequest.Create("http://www.telize.com/geoip/" & sIp)
+                        Using oResponseStream As Stream = oRequest.GetResponse().GetResponseStream()
+                            Dim sResponse As String = New StreamReader(oResponseStream).ReadToEnd()
+                            arLocationData = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(sResponse)
+                        End Using
+                        HttpRuntime.Cache.Insert("geo_" & sIp, arLocationData, Nothing, DateTime.Now.AddDays(1), TimeSpan.Zero)
+                        Return arLocationData
+                    Catch ex3 As Exception
+                        If IsNothing(oHttpCache.Get("getlocation_service3")) Then
+                            Dim oHtmlEmail As New Mail
+                            oHtmlEmail.sReceiver = "iterr@zeepro.fr"
+                            oHtmlEmail.sSubject = "[SSO] Location Service 3 is down"
+                            oHtmlEmail.sBody = "The Location service3 (http://www.telize.com/geoip/" & sIp & ") is down. Please check the logs."
+                            oHtmlEmail.Send()
+                            oHttpCache.Insert("getlocation_service3", "Service3 is down", Nothing, DateTime.Now.AddMinutes(60.0), TimeSpan.Zero)
+                        End If
+                        ZSSOUtilities.WriteLog("GetLocation : NOK (service3) : " & ex3.Message)
+                    End Try
                 End Try
             End Try
-        End Try
+        End If
+
         Return Nothing
     End Function
 
