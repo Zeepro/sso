@@ -52,7 +52,9 @@ Public Class changepassword
                 Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
                     oConnection.Open()
 
-                    If Not ZSSOUtilities.Login(oConnection, sEmail, sOldPassword) Then
+                    ' Changing password confirms account
+
+                    If Not ZSSOUtilities.Login(oConnection, sEmail, sOldPassword, lMustBeConfirmed:=False) Then
                         oContext.Response.ContentType = "text/plain"
                         oContext.Response.StatusCode = 434
                         oContext.Response.Write("Login failed")
@@ -60,7 +62,7 @@ Public Class changepassword
                         Return
                     End If
 
-                    Dim sQuery = "UPDATE Account SET Password = @new_password WHERE email=@email"
+                    Dim sQuery = "UPDATE Account SET Password = @new_password, confirmed = 1 WHERE email=@email"
 
                     Using oSqlCmdUpdate As New SqlCommand(sQuery, oConnection)
 

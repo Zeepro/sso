@@ -4,6 +4,7 @@ Imports System.Text.RegularExpressions.Regex
 Imports System.Data.SqlClient
 Imports System.Security.Cryptography
 Imports System.Runtime.Caching
+Imports System.Web.Script.Serialization
 Imports System.IO
 
 Public Class login
@@ -12,9 +13,10 @@ Public Class login
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
         Dim sEmail As String
         Dim sPassword As String
-        Dim sOptin As String
+        Dim sOptin, sToken As String
         Dim lOptin As Nullable(Of Boolean)
         Dim iStatusCode As Integer = 202
+        Dim oSerializer As New JavaScriptSerializer
 
         If oContext.Request.HttpMethod = "GET" Then
             oContext.Response.ContentType = "text/html"
@@ -75,9 +77,10 @@ Public Class login
                     Return
                 End If
                 oContext.Response.StatusCode = 202
+                oContext.Response.ContentType = "application/json"
 
-                ' Optin update
                 Try
+                    ' Optin update
                     If Not lOptin Is Nothing Then
                         Using oSqlCmd As New SqlCommand("UPDATE Account SET optin = @optin WHERE email = @email", oConnection)
                             oSqlCmd.Parameters.AddWithValue("@email", sEmail)
@@ -89,6 +92,13 @@ Public Class login
                             oSqlCmd.ExecuteNonQuery()
                         End Using
                     End If
+                    Using oSqlCmd As New SqlCommand("DELETE TokenId WHERE date < DATEADD(day, -1, GETDATE());INSERT TokenId (email, token) VALUES (@email, @token)", oConnection)
+                        oSqlCmd.Parameters.AddWithValue("@email", sEmail)
+                        sToken = System.Web.Security.Membership.GeneratePassword(40, 0)
+                        oSqlCmd.Parameters.AddWithValue("@token", sToken)
+                        oSqlCmd.ExecuteNonQuery()
+                        oContext.Response.Write(oSerializer.Serialize(New Dictionary(Of String, String) From {{"token_id", sToken}}))
+                    End Using
                 Catch ex As Exception
                     ZSSOUtilities.WriteLog("Login: " & ex.Message)
                 End Try
