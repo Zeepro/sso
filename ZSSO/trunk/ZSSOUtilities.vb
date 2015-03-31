@@ -19,7 +19,7 @@ Public Class ZSSOUtilities
     Private Shared oSha1 As New SHA1CryptoServiceProvider
     Private Shared sKey As String = "zeepro"
 
-    Public Shared Function Login(oConnection As SqlConnection, sEmail As String, sPassword As String) As Boolean
+    Public Shared Function Login(oConnection As SqlConnection, sEmail As String, sPassword As String, Optional lMustBeConfirmed As Boolean = True) As Boolean
         Dim sQuery = "SELECT TOP 1 * " & _
             "FROM Account " & _
             "WHERE Email=@email AND Deleted IS NULL"
@@ -30,7 +30,7 @@ Public Class ZSSOUtilities
                 Using oQueryResult As SqlDataReader = oSqlCmdSelect.ExecuteReader()
                     If oQueryResult.Read() Then
                         Dim bConfirmed As Boolean = oQueryResult(oQueryResult.GetOrdinal("Confirmed"))
-                        If BCrypt.Net.BCrypt.Verify(sPassword, oQueryResult(oQueryResult.GetOrdinal("Password"))) And bConfirmed Then
+                        If BCrypt.Net.BCrypt.Verify(sPassword, oQueryResult(oQueryResult.GetOrdinal("Password"))) AndAlso (bConfirmed OrElse Not lMustBeConfirmed) Then
                             Return True
                         End If
                     End If
@@ -259,6 +259,30 @@ Public Class ZSSOUtilities
             End Using
         End Using
         Return False
+    End Function
+
+    Public Shared Function SearchAccountToken(sToken As String, sSerial As String) As String
+
+        Dim sAccountEmail As String
+
+        Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+            oConnection.Open()
+
+            Dim sQuery = "DELETE TokenId WHERE date < DATEADD(day, -1, GETDATE());" & _
+                "SELECT TOP 1 TokenId.email " & _
+                "FROM TokenId " & _
+                "INNER JOIN AccountPrinterAssociation " & _
+                "ON TokenId.email = AccountPrinterAssociation.email " & _
+                "WHERE TokenId.token = @token AND AccountPrinterAssociation.serial = @serial AND (AccountPrinterAssociation.accountrestriction IS NULL OR AccountPrinterAssociation.accountrestriction = 0)"
+
+            Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
+                oSqlCmdSelect.Parameters.AddWithValue("@token", sToken)
+                oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial)
+                sAccountEmail = oSqlCmdSelect.ExecuteScalar()
+            End Using
+        End Using
+
+        Return sAccountEmail
     End Function
 
     Public Shared Function SearchService(sService As String)
