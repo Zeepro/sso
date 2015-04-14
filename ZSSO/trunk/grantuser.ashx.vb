@@ -78,7 +78,7 @@ Public Class grantuser
                     Return
                 End If
 
-                sAccountEmail = ZSSOUtilities.SearchAccountToken(sToken, sSerial)
+                sAccountEmail = ZSSOUtilities.SearchAccountEmail(sToken, sSerial)
 
                 If sAccountEmail Is Nothing Then
                     oContext.Response.ContentType = "text/plain"

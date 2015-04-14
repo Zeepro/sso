@@ -58,7 +58,7 @@ Public Class revokeuser
                     Return
                 End If
 
-                If ZSSOUtilities.SearchAccountToken(sToken, sSerial) Is Nothing Then
+                If ZSSOUtilities.SearchAccountEmail(sToken, sSerial) Is Nothing Then
                     oContext.Response.ContentType = "text/plain"
                     oContext.Response.StatusCode = 442
                     oContext.Response.Write("Unauthorized user")

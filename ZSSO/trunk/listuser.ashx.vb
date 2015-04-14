@@ -8,7 +8,6 @@ Public Class listuser
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
         Dim sToken, sSerial, sAccountEmail As String
-        Dim nAccountRestriction, nManageRestriction, nViewRestriction As Integer
         Dim oSerializer As New JavaScriptSerializer
 
         If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "listuser") > 5 Then
@@ -57,7 +56,7 @@ Public Class listuser
                     Return
                 End If
 
-                sAccountEmail = ZSSOUtilities.SearchAccountToken(sToken, sSerial)
+                sAccountEmail = ZSSOUtilities.SearchAccountEmail(sToken, sSerial)
 
                 If sAccountEmail Is Nothing Then
                     oContext.Response.ContentType = "text/plain"
@@ -73,7 +72,7 @@ Public Class listuser
 
                     Using oSqlCmd As New SqlCommand("SELECT email, ISNULL(name, '') AS name, ISNULL(accountrestriction, 0) AS accountrestriction, ISNULL(managerestriction, 0) AS managerestriction, ISNULL(viewrestriction, 0) AS viewrestriction " & _
                             "FROM AccountPrinterAssociation " & _
-                            "WHERE serial = @serial", _
+                            "WHERE deleted IS NULL AND serial = @serial", _
                             oConnection)
 
                         oSqlCmd.Parameters.AddWithValue("@serial", sSerial)
