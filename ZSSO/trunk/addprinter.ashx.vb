@@ -5,9 +5,13 @@ Imports System.Data.SqlClient
 Imports System.Security.Cryptography
 Imports System.Runtime.Caching
 Imports System.IO
+Imports System.Threading
+Imports System.Web.Script.Serialization
 
 Public Class addprinter
     Implements System.Web.IHttpHandler
+
+    Public oSerializer As New JavaScriptSerializer
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
         Dim sEmail As String
@@ -92,6 +96,16 @@ Public Class addprinter
                         oSqlCmd.ExecuteNonQuery()
 
                         oTransaction.Commit()
+
+                        'Send stat
+                        ThreadPool.UnsafeQueueUserWorkItem(New WaitCallback(AddressOf ZSSOUtilities.SendStat), _
+                                                           New NameValueCollection() From {{"printersn", sSerial.ToUpper}, _
+                                                                                           {"category", "associate"}, _
+                                                                                           {"action", "grant"}, _
+                                                                                           {"label", oSerializer.Serialize(New Dictionary(Of String, String) From {{"email", sEmail.ToLower}, _
+                                                                                                                                                                   {"account_restriction", "no"}, _
+                                                                                                                                                                   {"manage_restriction", "no"}, _
+                                                                                                                                                                   {"view_restriction", "no"}})}})
                     Catch ex As Exception
                         oSqlCmd.Transaction.Rollback()
                         Throw ex

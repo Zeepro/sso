@@ -1,14 +1,18 @@
 ﻿Imports System.Web
 Imports System.Web.Services
 Imports System.Data.SqlClient
+Imports System.Threading
+Imports System.Web.Script.Serialization
 
 Public Class grantuser
     Implements System.Web.IHttpHandler
 
+    Public oSerializer As New JavaScriptSerializer
+
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
         Dim sToken, sSerial, sEmail, sName, sAccount, sManage, sView, sLanguage, sAccountEmail As String
         Dim nAccountRestriction, nManageRestriction, nViewRestriction As Integer
- 
+
         If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "grantuser") > 5 Then
             oContext.Response.ContentType = "text/plain"
             oContext.Response.StatusCode = 435
@@ -199,6 +203,16 @@ Public Class grantuser
                         oSqlCmd.ExecuteNonQuery()
 
                         oTransaction.Commit()
+
+                        'Send stat
+                        ThreadPool.UnsafeQueueUserWorkItem(New WaitCallback(AddressOf ZSSOUtilities.SendStat), _
+                                                           New NameValueCollection() From {{"printersn", sSerial.ToUpper}, _
+                                                                                           {"category", "associate"}, _
+                                                                                           {"action", "grant"}, _
+                                                                                           {"label", oSerializer.Serialize(New Dictionary(Of String, String) From {{"email", sEmail.ToLower}, _
+                                                                                                                                                                   {"account_restriction", IIf(nAccountRestriction = 1, "yes", "no")}, _
+                                                                                                                                                                   {"manage_restriction", IIf(nManageRestriction = 1, "yes", "no")}, _
+                                                                                                                                                                   {"view_restriction", IIf(nViewRestriction = 1, "yes", "no")}})}})
                     Catch ex As Exception
                         oSqlCmd.Transaction.Rollback()
                         Throw ex

@@ -1,6 +1,7 @@
 ﻿Imports System.Web
 Imports System.Web.Services
 Imports System.Data.SqlClient
+Imports System.Threading
 
 Public Class revokeuser
     Implements System.Web.IHttpHandler
@@ -74,6 +75,12 @@ Public Class revokeuser
                         oSqlCmd.ExecuteNonQuery()
                     End Using
                 End Using
+                'Send stat
+                ThreadPool.UnsafeQueueUserWorkItem(New WaitCallback(AddressOf ZSSOUtilities.SendStat), _
+                                                   New NameValueCollection() From {{"printersn", sSerial.ToUpper}, _
+                                                                                   {"category", "associate"}, _
+                                                                                   {"action", "revoke"}, _
+                                                                                   {"label", sEmail.ToLower}})
                 ZSSOUtilities.WriteLog("RevokeUser: OK")
             End If
         End If
