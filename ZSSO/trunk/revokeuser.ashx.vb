@@ -2,9 +2,12 @@
 Imports System.Web.Services
 Imports System.Data.SqlClient
 Imports System.Threading
+Imports System.Web.Script.Serialization
 
 Public Class revokeuser
     Implements System.Web.IHttpHandler
+
+    Public oSerializer As New JavaScriptSerializer
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
         Dim sToken, sSerial, sEmail As String
@@ -80,7 +83,7 @@ Public Class revokeuser
                                                    New NameValueCollection() From {{"printersn", sSerial.ToUpper}, _
                                                                                    {"category", "associate"}, _
                                                                                    {"action", "revoke"}, _
-                                                                                   {"label", sEmail.ToLower}})
+                                                                                   {"label", oSerializer.Serialize(New Dictionary(Of String, String) From {{"email", sEmail.ToLower}})}})
                 ZSSOUtilities.WriteLog("RevokeUser: OK")
             End If
         End If
