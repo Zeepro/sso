@@ -87,7 +87,7 @@ Public Class createprinter
                             ElseIf (CLng("&H" & oPrinter("serialnumber")) < CLng("&H" & oPrinter("rangecode").Substring(0, 12))) Or (CLng("&H" & oPrinter("serialnumber")) > CLng("&H" & oPrinter("rangecode").Substring(12, 12))) Then
                                 arPrinterResult("result") = "incorrect MAC"
                             ElseIf ZSSOUtilities.SearchSerial(oPrinter("serialnumber")) = True Then
-                                arPrinterResult("result") = "already exist"
+                                arPrinterResult("result") = "already exists"
                             ElseIf String.Compare(oPrinter("rangecode"), "testrange") = 0 Then
                                 arPrinterResult("result") = "test"
                             Else

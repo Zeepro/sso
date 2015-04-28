@@ -66,8 +66,8 @@ Public Class confirmaccount
                                 If bConfirmed Then
                                     oContext.Response.ContentType = "text/plain"
                                     oContext.Response.StatusCode = 437
-                                    oContext.Response.Write("Already exist")
-                                    ZSSOUtilities.WriteLog("ConfirmAccount : Already exist (confirmed)")
+                                    oContext.Response.Write("Already exists")
+                                    ZSSOUtilities.WriteLog("ConfirmAccount : Already exists (confirmed)")
                                     Return
                                 Else
                                     iCodeAccount = oQueryResult(oQueryResult.GetOrdinal("Code"))

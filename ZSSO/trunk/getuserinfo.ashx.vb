@@ -7,8 +7,7 @@ Public Class getuserinfo
     Implements System.Web.IHttpHandler
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
-        Dim sToken, sCountry, sCity, sWhy, sWhat, sAccountEmail As String
-        Dim dBirth_date As Nullable(Of DateTime)
+        Dim sToken, sAccountEmail As String
         Dim oSerializer As New JavaScriptSerializer
 
         If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "getuserinfo") > 5 Then
@@ -23,7 +22,7 @@ Public Class getuserinfo
                 oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
                                         "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
                                         "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
-                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>CreateAccount</h1></div>" & _
+                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>getuserinfo</h1></div>" & _
                                         "<form  method=""post"" action=""/getuserinfo.ashx"" accept-charset=""utf-8"">" & _
                                         "token <input id=""token"" name=""token"" type=""text"" /><br />" & _
                                         "<input id=""Submit1"" type=""submit"" value=""Ok""  onclick=""javascript: load_wait();"" /></form></body></html>")

@@ -28,7 +28,7 @@ Public Class createaccount
                 oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
                                         "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
                                         "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
-                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>CreateAccount</h1></div>" & _
+                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>createaccount</h1></div>" & _
                                         "<form  method=""post"" action=""/createaccount.ashx"" accept-charset=""utf-8"">" & _
                                         "login <input id=""email"" name=""email"" type=""text"" /><br />" & _
                                         "password <input id=""password"" name=""password"" type=""text"" /><br />" & _
@@ -64,8 +64,8 @@ Public Class createaccount
                 If testaccount.SearchEmail(sEmail) Then
                     oContext.Response.ContentType = "text/plain"
                     oContext.Response.StatusCode = 437
-                    oContext.Response.Write("Already Exist")
-                    ZSSOUtilities.WriteLog("CreateAccount : Already exist")
+                    oContext.Response.Write("Already exists")
+                    ZSSOUtilities.WriteLog("CreateAccount : Already exists")
                     Return
                 End If
 
@@ -143,7 +143,7 @@ Public Class createaccount
                             oContext.Response.ContentType = "text/plain"
                             oContext.Response.StatusCode = 437
                             oContext.Response.Write("Already Exist")
-                            ZSSOUtilities.WriteLog("CreateAccount : Already exist")
+                            ZSSOUtilities.WriteLog("CreateAccount : Already exists")
                             Return
                         End If
                         oSqlCmd.Transaction.Rollback()

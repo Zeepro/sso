@@ -22,7 +22,7 @@ Public Class useraccess
                 oContext.Response.Write("<!DOCTYPE html><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>" & _
                                         "<script src=""https://code.jquery.com/jquery-1.10.2.js""></script><script type=""text/javascript"">function load_wait() { $(""#overlay"").addClass(""gray-overlay""); $("".ui-loader"").css(""display"", ""block""); }</script>" & _
                                         "<link rel=""stylesheet"" type=""text/css"" href=""style.css"">" & _
-                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>CreateAccount</h1></div>" & _
+                                        "</head><body><div id=""overlay""></div><div class=""ui-loader ui-corner-all ui-body-a ui-loader-default""><span class=""ui-icon-loading""></span><h1>useraccess</h1></div>" & _
                                         "<form  method=""post"" action=""/useraccess.ashx"" accept-charset=""utf-8"">" & _
                                         "token <input id=""token"" name=""token"" type=""text"" /><br />" & _
                                         "serial <input id=""printersn"" name=""printersn"" type=""text"" /><br />" & _
