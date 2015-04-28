@@ -8,7 +8,8 @@ Public Class list
     Implements System.Web.IHttpHandler
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
-        Dim sToken, sAccountEmail, sName As String
+        Dim sToken, sAccountEmail As String
+        Dim nId As Integer
         Dim dDate As DateTime
         Dim oList As New List(Of Dictionary(Of String, Object))
         Dim oModel, oPrint As Dictionary(Of String, Object)
@@ -73,11 +74,11 @@ Public Class list
 
                             Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
 
-                                sName = ""
+                                nId = 0
                                 dDate = Date.MinValue
 
                                 While oQueryResult.Read()
-                                    If sName <> oQueryResult("name") Then
+                                    If nId <> oQueryResult("id") Then
                                         oModel = New Dictionary(Of String, Object)
                                         oModel.Add("id", oQueryResult("id"))
                                         oModel.Add("name", oQueryResult("name"))
@@ -145,7 +146,7 @@ Public Class list
                                             oModel.Add("print", New List(Of Dictionary(Of String, Object)) From {oPrint})
                                         End If
                                         oList.Add(oModel)
-                                        sName = oQueryResult("name")
+                                        nId = oQueryResult("id")
                                     Else
                                         oPrint = New Dictionary(Of String, Object)
                                         If Not IsDBNull(oQueryResult("date")) Then
