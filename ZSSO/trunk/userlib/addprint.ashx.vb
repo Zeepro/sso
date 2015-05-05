@@ -184,11 +184,15 @@ Public Class addprint1
 
 
                     Using oZip As Ionic.Zip.ZipFile = Ionic.Zip.ZipFile.Read(oContext.Server.MapPath("~\tmp\") & oContext.Request.UserHostAddress.Replace(":", "") & "." & sId & "." & sDate & ".zip")
-                        If Not (oZip.Count = 4 _
+                        If Not ((oZip.Count = 3 _
+                                AndAlso oZip.ContainsEntry("print.gcode") _
+                                AndAlso oZip.ContainsEntry("image.jpg") _
+                                AndAlso oZip.ContainsEntry("metadata.json")) OrElse _
+                            (oZip.Count = 4 _
                                 AndAlso oZip.ContainsEntry("print.gcode") _
                                 AndAlso oZip.ContainsEntry("time-lapse.mp4") _
                                 AndAlso oZip.ContainsEntry("image.jpg") _
-                                AndAlso oZip.ContainsEntry("metadata.json")) Then
+                                AndAlso oZip.ContainsEntry("metadata.json"))) Then
                             oContext.Response.ContentType = "text/plain"
                             oContext.Response.StatusCode = 433
                             oContext.Response.Write("Incorrect parameter")

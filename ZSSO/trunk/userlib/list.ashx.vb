@@ -100,6 +100,7 @@ Public Class list
                                         If Not IsDBNull(oQueryResult("modelimg")) Then
                                             oModel.Add("img", oQueryResult("modelimg"))
                                         End If
+                                        oPrint = Nothing
                                         If Not IsDBNull(oQueryResult("date")) Then
                                             If oPrint Is Nothing Then
                                                 oPrint = New Dictionary(Of String, Object)
