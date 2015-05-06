@@ -146,7 +146,7 @@ Public Class grantuser
                             Dim sPasswordHash As String = BCrypt.Net.BCrypt.HashPassword(sPassword, BCrypt.Net.BCrypt.GenerateSalt())
 
                             'Insert new account
-                            oSqlCmd.CommandText = "UPDATE Account SET Password=@password, Code=@code WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language) VALUES (@email, @password, @code, @language)"
+                            oSqlCmd.CommandText = "DELETE FROM AccountPrinterAssociation WHERE email IN (SELECT email FROM account where confirmed = 0 AND DATEDIFF(month, created, GETDATE()) > 3); DELETE FROM account WHERE confirmed = 0 AND DATEDIFF(month, created, GETDATE()) > 3; UPDATE Account SET Password=@password, Code=@code WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language) VALUES (@email, @password, @code, @language)"
                             oSqlCmd.Parameters.Clear()
                             oSqlCmd.Parameters.AddWithValue("@email", sEmail.ToLower)
                             oSqlCmd.Parameters.AddWithValue("@password", sPasswordHash)
@@ -173,6 +173,48 @@ Public Class grantuser
 
                                 If sTemplate.Length > 0 And sSubject.Length > 0 Then
                                     Dim sHtmlTemplate = sTemplate.Replace("#email#", sAccountEmail).Replace("#password#", sPassword)
+                                    Dim oHtmlEmail As New Mail
+                                    oHtmlEmail.sReceiver = sEmail
+                                    oHtmlEmail.sSubject = sSubject
+                                    oHtmlEmail.sBody = sHtmlTemplate
+                                    oHtmlEmail.Send()
+                                End If
+                            End Using
+                        Else
+                            ' The granted account already exists
+
+                            oSqlCmd.CommandText = "SELECT TOP 1 EmailTemplate.language " & _
+                                "FROM EmailTemplate " & _
+                                "INNER JOIN Account ON EmailTemplate.language = Account.language " & _
+                                "WHERE Name = @template_name AND Account.email = @email"
+
+                            oSqlCmd.Parameters.AddWithValue("@template_name", "grantaccount")
+                            oSqlCmd.Parameters.AddWithValue("@email", sEmail)
+
+                            sLanguage = oSqlCmd.ExecuteScalar()
+                            If sLanguage Is Nothing Then
+                                sLanguage = "en"
+                            End If
+
+                            'Select email template
+                            oSqlCmd.CommandText = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name AND Language = @language"
+                            oSqlCmd.Parameters.Clear()
+                            oSqlCmd.Parameters.AddWithValue("@template_name", "grantaccount")
+                            oSqlCmd.Parameters.AddWithValue("@language", sLanguage)
+
+                            'Send email with confirmation code
+                            Using oQueryResult As SqlDataReader = oSqlCmd.ExecuteReader()
+
+                                Dim sTemplate As String = ""
+                                Dim sSubject As String = ""
+
+                                If oQueryResult.Read() Then
+                                    sTemplate = oQueryResult(oQueryResult.GetOrdinal("HtmlTemplate"))
+                                    sSubject = oQueryResult(oQueryResult.GetOrdinal("Subject"))
+                                End If
+
+                                If sTemplate.Length > 0 And sSubject.Length > 0 Then
+                                    Dim sHtmlTemplate = sTemplate.Replace("#email#", sAccountEmail)
                                     Dim oHtmlEmail As New Mail
                                     oHtmlEmail.sReceiver = sEmail
                                     oHtmlEmail.sSubject = sSubject

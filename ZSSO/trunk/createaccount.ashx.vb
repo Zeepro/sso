@@ -101,9 +101,9 @@ Public Class createaccount
                     Try
                         'Insert new account
                         If lOptin Then
-                            oSqlCmd.CommandText = "UPDATE Account SET Password=@password, Code=@code, optin = 1 WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language, optin) VALUES (@email, @password, @code, @language, 1)"
+                            oSqlCmd.CommandText = "DELETE FROM AccountPrinterAssociation WHERE email IN (SELECT email FROM account where confirmed = 0 AND DATEDIFF(month, created, GETDATE()) > 3); DELETE FROM account WHERE confirmed = 0 AND DATEDIFF(month, created, GETDATE()) > 3; UPDATE Account SET Password=@password, Code=@code, optin = 1 WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language, optin) VALUES (@email, @password, @code, @language, 1)"
                         Else
-                            oSqlCmd.CommandText = "UPDATE Account SET Password=@password, Code=@code WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language) VALUES (@email, @password, @code, @language)"
+                            oSqlCmd.CommandText = "DELETE FROM AccountPrinterAssociation WHERE email IN (SELECT email FROM account where confirmed = 0 AND DATEDIFF(month, created, GETDATE()) > 3); DELETE FROM account WHERE confirmed = 0 AND DATEDIFF(month, created, GETDATE()) > 3; UPDATE Account SET Password=@password, Code=@code WHERE Email=@email IF @@ROWCOUNT=0 INSERT INTO Account (Email, Password, Code, Language) VALUES (@email, @password, @code, @language)"
                         End If
                         oSqlCmd.Parameters.AddWithValue("@email", sEmail.ToLower)
                         oSqlCmd.Parameters.AddWithValue("@password", sPasswordHash)

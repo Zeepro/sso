@@ -9,10 +9,16 @@ Imports System.Globalization
 Imports BCrypt.Net.BCrypt
 Imports System.Net.Cache
 Imports System.Net.Mail
+Imports Microsoft.WindowsAzure.Storage
+Imports Microsoft.WindowsAzure.Storage.Auth
+Imports Microsoft.WindowsAzure.Storage.Blob
+
 
 Public Class ZSSOUtilities
     Public Shared oEmailRegex As New Regex("^[-0-9a-zA-Z.+_]+@[-0-9a-zA-Z.+_]+\.[a-zA-Z]{2,4}$")
+    Public Shared rPartArchive As New Regex("(.*)\.zip\.(\d{1,2}|100)\.(\d{1,2}|100)$", RegexOptions.IgnoreCase Or RegexOptions.Compiled)
     Public Shared oSerializer As New JavaScriptSerializer
+
     Public Shared oAdminEmail As String = "zeepromac@zeepro.com"
     Public Shared oSerialEmail As String = "zeeproserial@zeepro.com"
     Public Shared oZoombaiAdminEmail As String = "changepassword@zeepro.com"
@@ -261,25 +267,40 @@ Public Class ZSSOUtilities
         Return False
     End Function
 
-    Public Shared Function SearchAccountToken(sToken As String, sSerial As String) As String
+    Public Shared Function SearchAccountEmail(sToken As String, Optional sSerial As String = Nothing) As String
 
         Dim sAccountEmail As String
+        Dim sQuery As String
 
         Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
             oConnection.Open()
 
-            Dim sQuery = "DELETE TokenId WHERE date < DATEADD(day, -1, GETDATE());" & _
-                "SELECT TOP 1 TokenId.email " & _
-                "FROM TokenId " & _
-                "INNER JOIN AccountPrinterAssociation " & _
-                "ON TokenId.email = AccountPrinterAssociation.email " & _
-                "WHERE TokenId.token = @token AND AccountPrinterAssociation.serial = @serial AND (AccountPrinterAssociation.accountrestriction IS NULL OR AccountPrinterAssociation.accountrestriction = 0)"
 
-            Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
-                oSqlCmdSelect.Parameters.AddWithValue("@token", sToken)
-                oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial)
-                sAccountEmail = oSqlCmdSelect.ExecuteScalar()
-            End Using
+            If sSerial Is Nothing Then
+                sQuery = "DELETE TokenId WHERE date < DATEADD(day, -1, GETDATE());" & _
+                    "SELECT TOP 1 TokenId.email " & _
+                    "FROM TokenId " & _
+                    "WHERE TokenId.token = @token"
+
+                Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
+                    oSqlCmdSelect.Parameters.AddWithValue("@token", sToken)
+                    sAccountEmail = oSqlCmdSelect.ExecuteScalar()
+                End Using
+            Else
+                sQuery = "DELETE TokenId WHERE date < DATEADD(day, -1, GETDATE());" & _
+                    "SELECT TOP 1 TokenId.email " & _
+                    "FROM TokenId " & _
+                    "INNER JOIN AccountPrinterAssociation " & _
+                    "ON TokenId.email = AccountPrinterAssociation.email " & _
+                    "WHERE TokenId.token = @token AND AccountPrinterAssociation.serial = @serial AND (AccountPrinterAssociation.accountrestriction IS NULL OR AccountPrinterAssociation.accountrestriction = 0)"
+
+                Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
+                    oSqlCmdSelect.Parameters.AddWithValue("@token", sToken)
+                    oSqlCmdSelect.Parameters.AddWithValue("@serial", sSerial)
+                    sAccountEmail = oSqlCmdSelect.ExecuteScalar()
+                End Using
+            End If
+
         End Using
 
         Return sAccountEmail
@@ -326,6 +347,199 @@ Public Class ZSSOUtilities
         End Using
         Return False
     End Function
+
+    Shared Function sha1(ByVal strToHash As String) As String
+        Dim sha1Obj As New System.Security.Cryptography.SHA1CryptoServiceProvider
+        Dim bytesToHash() As Byte = System.Text.Encoding.ASCII.GetBytes(strToHash)
+
+        bytesToHash = sha1Obj.ComputeHash(bytesToHash)
+
+        Dim strResult As String = ""
+
+        For Each b As Byte In bytesToHash
+            strResult += b.ToString("x2")
+        Next
+
+        Return strResult
+    End Function
+
+    Public Shared Sub SendStat(ByVal oStateInfo As Object)
+
+        Using oWebclient As New WebClient
+            oWebclient.UploadValues(System.Configuration.ConfigurationManager.AppSettings("statURL"), _
+                                    DirectCast(oStateInfo, NameValueCollection))
+        End Using
+    End Sub
+
+    Public Shared Sub Store3DFile(ByVal oStateInfo As Object)
+        Dim sId As String = CStr(DirectCast(oStateInfo, NameValueCollection)("id"))
+        Dim sPath As String = DirectCast(oStateInfo, NameValueCollection)("path")
+        Dim oStorageAccount As CloudStorageAccount = CloudStorageAccount.Parse(System.Configuration.ConfigurationManager.AppSettings("StorageConnectionString"))
+        Dim oBlobClient As CloudBlobClient
+        Dim oContainer As CloudBlobContainer
+        Dim oBlob As CloudBlockBlob
+        Dim oEtag As Dictionary(Of String, String)
+
+        Try
+            oBlobClient = oStorageAccount.CreateCloudBlobClient()
+            oContainer = oBlobClient.GetContainerReference("3dmodel")
+
+            Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                oConnection.Open()
+
+                Dim oSqlCmd As New SqlCommand("UPDATE Model3Dfile SET url1 = @url1, " & _
+                                              "description = @description, " & _
+                                              "etag1 = @etag1, " & _
+                                              "url2 = @url2, " & _
+                                              "etag2 = @etag2, " & _
+                                              "img = @img " & _
+                                              "WHERE model = @model", _
+                        oConnection)
+
+                oSqlCmd.Parameters.AddWithValue("@description", System.DBNull.Value)
+                oSqlCmd.Parameters.AddWithValue("@url1", System.DBNull.Value)
+                oSqlCmd.Parameters.AddWithValue("@etag1", System.DBNull.Value)
+                oSqlCmd.Parameters.AddWithValue("@url2", System.DBNull.Value)
+                oSqlCmd.Parameters.AddWithValue("@etag2", System.DBNull.Value)
+
+                Using oRead As New StreamReader(sPath & "\metadata.json")
+                    oEtag = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(oRead.ReadToEnd())
+                End Using
+
+                If oEtag.ContainsKey("description") Then
+                    oSqlCmd.Parameters("@description").Value = oEtag("description")
+                End If
+
+                For Each sFile As String In {"model.amf", "model.stl", "model1.stl"}
+                    oBlob = oContainer.GetBlockBlobReference(sId & "." & sha1("zeepro" & sId & "." & sFile & ".zip") & ".zip")
+                    oBlob.DeleteIfExists(DeleteSnapshotsOption.IncludeSnapshots)
+                    If File.Exists(sPath & "\" & sFile) Then
+                        Using oZip As New Ionic.Zip.ZipFile
+                            oZip.AddFile(sPath & "\" & sFile, "")
+                            oZip.Save(sPath & "\" & sFile & ".zip")
+                        End Using
+                        oBlob.UploadFromFile(sPath & "\" & sFile & ".zip", FileMode.Open)
+                        oSqlCmd.Parameters("@url1").Value = oBlob.Uri.AbsoluteUri
+                        If oEtag.ContainsKey("file1etag") Then
+                            oSqlCmd.Parameters("@etag1").Value = oEtag("file1etag")
+                        End If
+                    End If
+                Next
+
+                oBlob = oContainer.GetBlockBlobReference(sId & "." & sha1("zeepro" & sId & ".model2.stl.zip") & ".zip")
+                oBlob.DeleteIfExists(DeleteSnapshotsOption.IncludeSnapshots)
+                If File.Exists(sPath & "\model2.stl") Then
+                    Using oZip As New Ionic.Zip.ZipFile
+                        oZip.AddFile(sPath & "\model2.stl", "")
+                        oZip.Save(sPath & "\model2.stl.zip")
+                    End Using
+                    oBlob.UploadFromFile(sPath & "\model2.stl.zip", FileMode.Open)
+                    oSqlCmd.Parameters("@url2").Value = oBlob.Uri.AbsoluteUri
+                    If oEtag.ContainsKey("file2etag") Then
+                        oSqlCmd.Parameters("@etag2").Value = oEtag("file2etag")
+                    End If
+                End If
+
+                oBlob = oContainer.GetBlockBlobReference(sId & "." & sha1("zeepro" & sId & ".image.png") & ".png")
+                oBlob.DeleteIfExists(DeleteSnapshotsOption.IncludeSnapshots)
+                oBlob.UploadFromFile(sPath & "/image.png", FileMode.Open)
+                oSqlCmd.Parameters.AddWithValue("@img", oBlob.Uri.AbsoluteUri)
+
+                oSqlCmd.Parameters.AddWithValue("@model", DirectCast(oStateInfo, NameValueCollection)("id"))
+
+                oSqlCmd.ExecuteNonQuery()
+            End Using
+
+            Directory.Delete(sPath, True)
+        Catch ex As Exception
+            ZSSOUtilities.WriteLog("Store3DFile: " & ex.Message)
+            Return
+        End Try
+    End Sub
+
+    Public Shared Sub StorePrint(ByVal oStateInfo As Object)
+        Dim sId As String = CStr(DirectCast(oStateInfo, NameValueCollection)("id"))
+        Dim sPath As String = DirectCast(oStateInfo, NameValueCollection)("path")
+        Dim sDate As String = DirectCast(oStateInfo, NameValueCollection)("date")
+        Dim oStorageAccount As CloudStorageAccount = CloudStorageAccount.Parse(System.Configuration.ConfigurationManager.AppSettings("StorageConnectionString"))
+        Dim oBlobClient As CloudBlobClient
+        Dim oContainer As CloudBlobContainer
+        Dim oBlob As CloudBlockBlob
+        Dim oEtag As Dictionary(Of String, String)
+
+        Try
+            oBlobClient = oStorageAccount.CreateCloudBlobClient()
+            oContainer = oBlobClient.GetContainerReference("3dprint")
+
+            Using oConnection As New SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings("ZSSODb").ConnectionString)
+                oConnection.Open()
+
+                Dim oSqlCmd As New SqlCommand("UPDATE ModelPrint SET description = @description, " & _
+                                              "gcode = @gcode, " & _
+                                              "gcodeetag = @gcodeetag, " & _
+                                              "[time-lapse] = @timelapse, " & _
+                                              "[time-lapseetag] = @timelapseetag, " & _
+                                              "img = @img " & _
+                                              "WHERE model = @model", _
+                        oConnection)
+
+                Using oRead As New StreamReader(sPath & "\metadata.json")
+                    oEtag = ZSSOUtilities.oSerializer.Deserialize(Of Dictionary(Of String, String))(oRead.ReadToEnd())
+                End Using
+
+                If oEtag.ContainsKey("description") Then
+                    oSqlCmd.Parameters.AddWithValue("@description", oEtag("description"))
+                Else
+                    oSqlCmd.Parameters.AddWithValue("@description", System.DBNull.Value)
+                End If
+
+                oBlob = oContainer.GetBlockBlobReference(sId & "." & sDate & "." & sha1("zeepro" & sId & "." & sDate & ".print.gcode.zip") & ".zip")
+                oBlob.DeleteIfExists(DeleteSnapshotsOption.IncludeSnapshots)
+                Using oZip As New Ionic.Zip.ZipFile
+                    oZip.AddFile(sPath & "\print.gcode", "")
+                    oZip.Save(sPath & "\print.gcode.zip")
+                End Using
+                oBlob.UploadFromFile(sPath & "\print.gcode.zip", FileMode.Open)
+                oSqlCmd.Parameters.AddWithValue("@gcode", oBlob.Uri.AbsoluteUri)
+
+                If oEtag.ContainsKey("gcodeetag") Then
+                    oSqlCmd.Parameters.AddWithValue("@gcodeetag", oEtag("gcodeetag"))
+                Else
+                    oSqlCmd.Parameters.AddWithValue("@gcodeetag", System.DBNull.Value)
+                End If
+
+                If oEtag.ContainsKey("time-lapse") Then
+                    oBlob = oContainer.GetBlockBlobReference(sId & "." & sDate & "." & sha1("zeepro" & sId & "." & sDate & ".time-lapse.mp4") & ".mp4")
+                    oBlob.DeleteIfExists(DeleteSnapshotsOption.IncludeSnapshots)
+                    oBlob.UploadFromFile(sPath & "/time-lapse.mp4", FileMode.Open)
+                    oSqlCmd.Parameters.AddWithValue("@timelapse", oBlob.Uri.AbsoluteUri)
+
+                Else
+                    oSqlCmd.Parameters.AddWithValue("@timelapse", System.DBNull.Value)
+                End If
+
+                If oEtag.ContainsKey("time-lapseetag") Then
+                    oSqlCmd.Parameters.AddWithValue("@timelapseetag", oEtag("time-lapseetag"))
+                Else
+                    oSqlCmd.Parameters.AddWithValue("@timelapseetag", System.DBNull.Value)
+                End If
+
+                oBlob = oContainer.GetBlockBlobReference(sId & "." & sDate & "." & sha1("zeepro" & sId & "." & sDate & ".image.jpg") & ".jpg")
+                oBlob.DeleteIfExists(DeleteSnapshotsOption.IncludeSnapshots)
+                oBlob.UploadFromFile(sPath & "/image.jpg", FileMode.Open)
+                oSqlCmd.Parameters.AddWithValue("@img", oBlob.Uri.AbsoluteUri)
+
+                oSqlCmd.Parameters.AddWithValue("@model", DirectCast(oStateInfo, NameValueCollection)("id"))
+
+                oSqlCmd.ExecuteNonQuery()
+            End Using
+
+            Directory.Delete(sPath, True)
+        Catch ex As Exception
+            ZSSOUtilities.WriteLog("Store3DFile: " & ex.Message)
+            Return
+        End Try
+    End Sub
 End Class
 
 Public NotInheritable Class Mail
