@@ -292,7 +292,7 @@ Public Class ZSSOUtilities
                     "FROM TokenId " & _
                     "INNER JOIN AccountPrinterAssociation " & _
                     "ON TokenId.email = AccountPrinterAssociation.email " & _
-                    "WHERE TokenId.token = @token AND AccountPrinterAssociation.serial = @serial AND (AccountPrinterAssociation.accountrestriction IS NULL OR AccountPrinterAssociation.accountrestriction = 0)"
+                    "WHERE TokenId.token = @token AND AccountPrinterAssociation.serial = @serial AND AccountPrinterAssociation.deleted IS NULL AND (AccountPrinterAssociation.accountrestriction IS NULL OR AccountPrinterAssociation.accountrestriction = 0)"
 
                 Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
                     oSqlCmdSelect.Parameters.AddWithValue("@token", sToken)
@@ -480,7 +480,7 @@ Public Class ZSSOUtilities
                                               "[time-lapse] = @timelapse, " & _
                                               "[time-lapseetag] = @timelapseetag, " & _
                                               "img = @img " & _
-                                              "WHERE model = @model", _
+                                              "WHERE model = @model AND date = @date", _
                         oConnection)
 
                 Using oRead As New StreamReader(sPath & "\metadata.json")
@@ -508,12 +508,11 @@ Public Class ZSSOUtilities
                     oSqlCmd.Parameters.AddWithValue("@gcodeetag", System.DBNull.Value)
                 End If
 
-                If oEtag.ContainsKey("time-lapse") Then
+                If File.Exists(sPath & "/time-lapse.mp4") Then
                     oBlob = oContainer.GetBlockBlobReference(sId & "." & sDate & "." & sha1("zeepro" & sId & "." & sDate & ".time-lapse.mp4") & ".mp4")
                     oBlob.DeleteIfExists(DeleteSnapshotsOption.IncludeSnapshots)
                     oBlob.UploadFromFile(sPath & "/time-lapse.mp4", FileMode.Open)
                     oSqlCmd.Parameters.AddWithValue("@timelapse", oBlob.Uri.AbsoluteUri)
-
                 Else
                     oSqlCmd.Parameters.AddWithValue("@timelapse", System.DBNull.Value)
                 End If
@@ -530,6 +529,7 @@ Public Class ZSSOUtilities
                 oSqlCmd.Parameters.AddWithValue("@img", oBlob.Uri.AbsoluteUri)
 
                 oSqlCmd.Parameters.AddWithValue("@model", DirectCast(oStateInfo, NameValueCollection)("id"))
+                oSqlCmd.Parameters.AddWithValue("@date", sDate)
 
                 oSqlCmd.ExecuteNonQuery()
             End Using
