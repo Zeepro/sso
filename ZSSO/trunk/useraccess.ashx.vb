@@ -64,7 +64,7 @@ Public Class useraccess
                         "FROM TokenId " & _
                         "INNER JOIN AccountPrinterAssociation " & _
                         "ON TokenId.email = AccountPrinterAssociation.email " & _
-                        "WHERE TokenId.token = @token AND AccountPrinterAssociation.serial = @serial"
+                        "WHERE TokenId.token = @token AND AccountPrinterAssociation.serial = @serial AND AccountPrinterAssociation.deleted IS NULL"
 
                     Using oSqlCmdSelect As New SqlCommand(sQuery, oConnection)
                         oSqlCmdSelect.Parameters.AddWithValue("@token", sToken)

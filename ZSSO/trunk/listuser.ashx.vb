@@ -35,7 +35,7 @@ Public Class listuser
                     String.IsNullOrEmpty(sSerial) Then
                     oContext.Response.StatusCode = 432
                     oContext.Response.Write("Missing parameter")
-                    ZSSOUtilities.WriteLog("GrantUser: Missing parameter")
+                    ZSSOUtilities.WriteLog("ListUser: Missing parameter")
                     Return
                 End If
 
@@ -44,7 +44,7 @@ Public Class listuser
                     oContext.Response.ContentType = "text/plain"
                     oContext.Response.StatusCode = 433
                     oContext.Response.Write("Incorrect Parameter")
-                    ZSSOUtilities.WriteLog("GrantUser: Incorrect parameter")
+                    ZSSOUtilities.WriteLog("ListUser: Incorrect parameter")
                     Return
                 End If
 
@@ -52,7 +52,7 @@ Public Class listuser
                     oContext.Response.ContentType = "text/plain"
                     oContext.Response.StatusCode = 436
                     oContext.Response.Write("Unknown printer")
-                    ZSSOUtilities.WriteLog("GrantUser: Unknown printer")
+                    ZSSOUtilities.WriteLog("ListUser: Unknown printer")
                     Return
                 End If
 
@@ -62,7 +62,7 @@ Public Class listuser
                     oContext.Response.ContentType = "text/plain"
                     oContext.Response.StatusCode = 442
                     oContext.Response.Write("Unauthorized user")
-                    ZSSOUtilities.WriteLog("GrantUser: Unauthorized user")
+                    ZSSOUtilities.WriteLog("ListUser: Unauthorized user")
                     Return
                 End If
 
