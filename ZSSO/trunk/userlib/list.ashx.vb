@@ -14,7 +14,7 @@ Public Class list
         Dim oList As New List(Of Dictionary(Of String, Object))
         Dim oModel, oPrint As Dictionary(Of String, Object)
 
-        If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "userliblist") > 5 Then
+        If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "userliblist") > 20 Then
             oContext.Response.ContentType = "text/plain"
             oContext.Response.StatusCode = 435
             oContext.Response.Write("Too many requests")

@@ -10,7 +10,7 @@ Public Class useraccess
         Dim sToken, sSerial As String
         Dim oSerializer As New JavaScriptSerializer
 
-        If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "useraccess") > 5 Then
+        If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "useraccess") > 20 Then
             oContext.Response.ContentType = "text/plain"
             oContext.Response.StatusCode = 435
             oContext.Response.Write("Too many requests")
