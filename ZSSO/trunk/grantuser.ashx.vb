@@ -10,7 +10,7 @@ Public Class grantuser
     Public oSerializer As New JavaScriptSerializer
 
     Sub ProcessRequest(ByVal oContext As HttpContext) Implements IHttpHandler.ProcessRequest
-        Dim sToken, sSerial, sEmail, sName, sAccount, sManage, sView, sLanguage, sAccountEmail As String
+        Dim sToken, sSerial, sEmail, sName, sMessage, sAccount, sManage, sView, sLanguage, sAccountEmail As String
         Dim nAccountRestriction, nManageRestriction, nViewRestriction As Integer
 
         If ZSSOUtilities.CheckRequests(oContext.Request.UserHostAddress, "grantuser") > 5 Then
@@ -31,6 +31,7 @@ Public Class grantuser
                                         "serial <input id=""printersn"" name=""printersn"" type=""text"" /><br />" & _
                                         "user email <input id=""user_email"" name=""user_email"" type=""text"" /><br />" & _
                                         "user name <input id=""user_name"" name=""user_name"" type=""text"" /><br />" & _
+                                        "message <input id=""message"" name=""message"" type=""text"" /><br />" & _
                                         "account (yes/no) <input id=""account"" name=""account"" type=""text"" /><br />" & _
                                         "manage (yes/no) <input id=""manage"" name=""manage"" type=""text"" /><br />" & _
                                         "view (yes/no) <input id=""view"" name=""view"" type=""text"" /><br />" & _
@@ -40,6 +41,7 @@ Public Class grantuser
                 sSerial = oContext.Request.Form("printersn")
                 sEmail = oContext.Request.Form("user_email")
                 sName = oContext.Request.Form("user_name")
+                sMessage = oContext.Request.Form("message")
                 sAccount = oContext.Request.Form("account")
                 sManage = oContext.Request.Form("manage")
                 sView = oContext.Request.Form("view")
@@ -140,6 +142,17 @@ Public Class grantuser
                                 sLanguage = "en"
                             End If
 
+                            If String.IsNullOrEmpty(sMessage) Then
+                                sMessage = ""
+                            Else
+                                Select Case sLanguage
+                                    Case "fr"
+                                        sMessage = "<br>" & sAccountEmail & " vous a adressé le message : """ & sMessage & """<br>"
+                                    Case Else
+                                        sMessage = "<br>Here is a message from " & sAccountEmail & ": """ & sMessage & """.<br>"
+                                End Select
+                            End If
+
                             Dim oRandom As Random = New Random()
                             Dim iCode = oRandom.Next(1, 9999)
                             Dim sPassword As String = Right("0000" & CStr(iCode), 4)
@@ -172,7 +185,7 @@ Public Class grantuser
                                 End If
 
                                 If sTemplate.Length > 0 And sSubject.Length > 0 Then
-                                    Dim sHtmlTemplate = sTemplate.Replace("#email#", sAccountEmail).Replace("#password#", sPassword)
+                                    Dim sHtmlTemplate = sTemplate.Replace("#email#", sAccountEmail).Replace("#password#", sPassword).Replace("#message#", sMessage)
                                     Dim oHtmlEmail As New Mail
                                     oHtmlEmail.sReceiver = sEmail
                                     oHtmlEmail.sSubject = sSubject
@@ -196,6 +209,28 @@ Public Class grantuser
                                 sLanguage = "en"
                             End If
 
+                            If String.IsNullOrEmpty(sMessage) Then
+                                sMessage = ""
+                            Else
+                                Select sLanguage
+                                    Case "fr"
+                                        sMessage = "<br>" & sAccountEmail & " vous a adressé le message : """ & sMessage & """<br>"
+                                    Case Else
+                                        sMessage = "<br>Here is a message from " & sAccountEmail & ": """ & sMessage & """.<br>"
+                                End Select
+                            End If
+
+                            Dim sPrinterName As String
+
+                            oSqlCmd.CommandText = "SELECT TOP 1 name " & _
+                                "FROM Printer " & _
+                                "WHERE serial = @serial"
+
+                            oSqlCmd.Parameters.Clear()
+                            oSqlCmd.Parameters.AddWithValue("@serial", sSerial)
+
+                            sPrinterName = oSqlCmd.ExecuteScalar()
+
                             'Select email template
                             oSqlCmd.CommandText = "SELECT TOP 1 HtmlTemplate, Subject FROM EmailTemplate WHERE Name = @template_name AND Language = @language"
                             oSqlCmd.Parameters.Clear()
@@ -207,14 +242,38 @@ Public Class grantuser
 
                                 Dim sTemplate As String = ""
                                 Dim sSubject As String = ""
+                                Dim sRightlist As String = ""
 
                                 If oQueryResult.Read() Then
                                     sTemplate = oQueryResult(oQueryResult.GetOrdinal("HtmlTemplate"))
                                     sSubject = oQueryResult(oQueryResult.GetOrdinal("Subject"))
+
+                                    Select Case sLanguage
+                                        Case "fr"
+                                            If nAccountRestriction = 0 Then
+                                                sRightlist &= "- gérer les comptes<br>"
+                                            End If
+                                            If nManageRestriction = 0 Then
+                                                sRightlist &= "- gérer les impressions<br>"
+                                            End If
+                                            If nViewRestriction = 0 Then
+                                                sRightlist &= "- suivre les impressions<br>"
+                                            End If
+                                        Case Else
+                                            If nAccountRestriction = 0 Then
+                                                sRightlist &= "- manage accounts<br>"
+                                            End If
+                                            If nManageRestriction = 0 Then
+                                                sRightlist &= "- manage prints<br>"
+                                            End If
+                                            If nViewRestriction = 0 Then
+                                                sRightlist &= "- watch prints<br>"
+                                            End If
+                                    End Select
                                 End If
 
                                 If sTemplate.Length > 0 And sSubject.Length > 0 Then
-                                    Dim sHtmlTemplate = sTemplate.Replace("#email#", sAccountEmail)
+                                    Dim sHtmlTemplate = sTemplate.Replace("#email#", sAccountEmail).Replace("#printer#", sPrinterName).Replace("#rightlist#", sRightlist).Replace("#message#", sMessage)
                                     Dim oHtmlEmail As New Mail
                                     oHtmlEmail.sReceiver = sEmail
                                     oHtmlEmail.sSubject = sSubject
