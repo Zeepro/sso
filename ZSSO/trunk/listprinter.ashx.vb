@@ -84,7 +84,7 @@ Public Class listprinter
                     End If
 
                     Dim sQuery = "DELETE ActivePrinter WHERE date < DATEADD(minute, -20, GETDATE());" & _
-                        "SELECT [AccountPrinterAssociation].Email, [AccountPrinterAssociation].Deleted, [AccountPrinterAssociation].Serial, [Printer].Name, [ActivePrinter].local_ip, [ActivePrinter].server_hostname, [ActivePrinter].port, [ActivePrinter].token, [Printer].current_software, [Printer].next_software " & _
+                        "SELECT [AccountPrinterAssociation].Email, [AccountPrinterAssociation].Deleted, [AccountPrinterAssociation].Serial, [Printer].Name, [ActivePrinter].local_ip, [ActivePrinter].server_hostname, [ActivePrinter].port, [ActivePrinter].token, [Printer].current_software, [Printer].next_software, [AccountPrinterAssociation].LastAccess, [AccountPrinterAssociation].CalibrationWarningMessage " & _
                         "FROM [AccountPrinterAssociation] " & _
                         "INNER JOIN Printer ON [AccountPrinterAssociation].Serial = [Printer].Serial " & _
                         "INNER JOIN ActivePrinter ON [ActivePrinter].Serial = [Printer].Serial " & _
@@ -110,6 +110,14 @@ Public Class listprinter
                                 End If
                                 If Not oQueryResult("next_software") Is System.DBNull.Value Then
                                     arPrinterData("next_software") = oQueryResult("next_software")
+                                End If
+                                If Not oQueryResult("lastaccess") Is System.DBNull.Value Then
+                                    arPrinterData("lastaccess") = oQueryResult("lastaccess")
+                                End If
+                                If oQueryResult("calibrationwarningmessage") Then
+                                    arPrinterData("calibrationwarningmessage") = "yes"
+                                Else
+                                    arPrinterData("calibrationwarningmessage") = "no"
                                 End If
                                 arAccountPrinters(sSerial) = arPrinterData
                             End While
